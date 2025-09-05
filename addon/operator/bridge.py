@@ -41,10 +41,6 @@ def blender_to_maya_function(self, context, temp_file):
         lock_normal = 'OFF'
     else:
         lock_normal = 'EDGE'
-    #axis_forward = context.scene.blender_maya_axis_forward_combobox
-    #axis_up = context.scene.blender_maya_axis_up_combobox
-    axis_up = 'Z'
-    axis_forward = 'Y'
 
     bpy.ops.export_scene.fbx(filepath=temp_file,
                                 check_existing=True,
@@ -79,8 +75,8 @@ def blender_to_maya_function(self, context, temp_file):
                                 batch_mode='OFF',
                                 use_batch_own_dir=True,
                                 use_metadata=True,
-                                axis_forward=axis_forward,
-                                axis_up=axis_up)
+                                axis_forward='Y',
+                                axis_up='Z')
     
     controller.show_message(context, "INFO", "Export: Done!")
 

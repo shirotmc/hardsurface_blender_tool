@@ -1,5 +1,4 @@
 import bpy
-from bpy.props import PointerProperty
 # Menu
 from .bevel import *
 from .solidify import TMC_OP_Solidify
@@ -9,7 +8,6 @@ from .check import *
 from .modifier import *
 from .material import *
 from .modeling import *
-from .looptools import  LoopToolsProps, Circle, Curve, Flatten, Relax, Space
 from .normal import *
 from .vertex_group import *
 from .bridge import *
@@ -76,19 +74,8 @@ classes = [
 	TMC_OP_RelaxEdge,
 	### Space Edge
 	TMC_OP_SpaceEdge,
-	### Smooth Edge
-	TMC_OP_SmoothEdge,
 	### Flatten Face
 	TMC_OP_FlattenFace,
-	### Loop Tools
-	LoopToolsProps,
-	Circle,
-	Curve,
-	Flatten,
-	Relax,
-	Space,
-
-
 	### Clone Element
 	TMC_OP_CloneElement,
 
@@ -106,25 +93,12 @@ classes = [
 	TMC_OP_Set_Normal_With_Active_Face
 ]
 
-def menu_func(self, context):
-	self.layout.menu("VIEW3D_MT_edit_mesh_looptools")
-	self.layout.separator()
-
 def register_operators():
 	from bpy.utils import register_class
 	for cls in classes:
 		register_class(cls)
-	bpy.types.VIEW3D_MT_edit_mesh_context_menu.prepend(menu_func)
-	bpy.types.WindowManager.looptools = PointerProperty(type=LoopToolsProps)
 	
 def unregister_operators():
 	from bpy.utils import unregister_class
 	for cls in reversed(classes):
 		unregister_class(cls)
-			
-	bpy.types.VIEW3D_MT_edit_mesh_context_menu.remove(menu_func)
-	try:
-		del bpy.types.WindowManager.looptools
-	except Exception as e:
-		print('unregister fail:\n', e)
-		pass
