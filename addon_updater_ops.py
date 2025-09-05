@@ -1,3 +1,20 @@
+# ##### BEGIN GPL LICENSE BLOCK #####
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software Foundation,
+#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+#
+# ##### END GPL LICENSE BLOCK #####
 
 """Blender UI integrations for the addon updater.
 
@@ -14,8 +31,7 @@ from bpy.app.handlers import persistent
 # Prevents popups for users with invalid python installs e.g. missing libraries
 # and will replace with a fake class instead if it fails (so UI draws work).
 try:
-    from ..utility.addon import get_prefs
-    from ..utility.updater import Updater as updater
+    from .addon_updater import Updater as updater
 except Exception as e:
     print("ERROR INITIALIZING UPDATER")
     print(str(e))
@@ -56,7 +72,7 @@ except Exception as e:
 # not match and have errors. Must be all lowercase and no spaces! Should also
 # be unique among any other addons that could exist (using this updater code),
 # to avoid clashes in operator registration.
-updater.addon = "hardsurface_tool"
+updater.addon = "addon_updater_demo"
 
 
 # -----------------------------------------------------------------------------
@@ -95,11 +111,11 @@ def get_user_preferences(context=None):
         context = bpy.context
     prefs = None
     if hasattr(context, "user_preferences"):
-        prefs = get_prefs().updater
+        prefs = context.user_preferences.addons.get(__package__, None)
     elif hasattr(context, "preferences"):
-        prefs = get_prefs().updater
+        prefs = context.preferences.addons.get(__package__, None)
     if prefs:
-        return prefs
+        return prefs.preferences
     # To make the addon stable and non-exception prone, return None
     # raise Exception("Could not fetch user preferences")
     return None
@@ -214,7 +230,7 @@ class AddonUpdaterInstallPopup(bpy.types.Operator):
 
 # User preference check-now operator
 class AddonUpdaterCheckNow(bpy.types.Operator):
-    bl_label = "Check Update: " + updater.addon
+    bl_label = "Check now for " + updater.addon + " update"
     bl_idname = updater.addon + ".updater_check_now"
     bl_description = "Check now for an update to the {} addon".format(
         updater.addon)
@@ -794,7 +810,7 @@ def check_for_update_nonthreaded(self, context):
 
     # Only check if it's ready, ie after the time interval specified should
     # be the async wrapper call here.
-    settings = get_user_preferences(context)
+    settings = get_user_preferences(bpy.context)
     if not settings:
         if updater.verbose:
             print("Could not get {} preferences, update check skipped".format(
@@ -934,7 +950,7 @@ def update_settings_ui(self, context, element=None):
     # Element is a UI element, such as layout, a row, column, or box.
     if element is None:
         element = self.layout
-    box = element
+    box = element.box()
 
     # In case of error importing updater.
     if updater.invalid_updater:
