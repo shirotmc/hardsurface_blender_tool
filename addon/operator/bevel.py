@@ -2,7 +2,6 @@ import bpy, traceback
 
 from ..utility.mouse import mouse_warp
 from ..utility.draw import draw_quad, draw_text, get_blf_text_dims
-from ..utility.addon import get_prefs
 
 from ..ui import controller
 
@@ -139,14 +138,12 @@ class TMC_OP_Bevel(bpy.types.Operator):
 
     def draw_shaders_2d(self, context):
 
-        prefs = get_prefs()
-
         # Props
         width_text = "Width: {:.2f}".format(self.modifier.width)
         segments_text = "Segments: {}".format(self.modifier.segments)
         limit_method_text = "Type: {}".format(self.limit_method_list[self.limit_method])
 
-        font_size = prefs.settings.font_size
+        font_size = 16
         dims = get_blf_text_dims(width_text, font_size)
         area_width = context.area.width
         padding = 8
@@ -164,17 +161,17 @@ class TMC_OP_Bevel(bpy.types.Operator):
         
         # Draw Quad
         verts = [top_left, bot_left, top_right, bot_right]
-        draw_quad(vertices=verts, color=prefs.color.bg_color)
+        draw_quad(vertices=verts, color=(0, 0, 0, 0.75))
 
         # Draw Text
         x = left_offset + padding
         y = bottom_offset + padding
         # Draw Width Text
-        draw_text(text=width_text, x=x, y=y, size=font_size, color=prefs.color.font_color)
+        draw_text(text=width_text, x=x, y=y, size=font_size, color=(1, 1, 1, 1))
         # Draw Segments Text
-        draw_text(text=segments_text, x=x, y=y - 20, size=font_size, color=prefs.color.font_color)
+        draw_text(text=segments_text, x=x, y=y - 20, size=font_size, color=(1, 1, 1, 1))
         # Draw Limit Method Text
-        draw_text(text=limit_method_text, x=x, y=y - 40, size=font_size, color=prefs.color.font_color)
+        draw_text(text=limit_method_text, x=x, y=y - 40, size=font_size, color=(1, 1, 1, 1))
 
 
 class TMC_OP_BevelCustomSetting(bpy.types.Operator):

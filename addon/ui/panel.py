@@ -283,7 +283,62 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 					row.prop(scene, "flatten_lock_z", text="Z", icon='UNLOCKED')
 				row = child_box.row(align=True)
 				row.prop(scene, "flatten_influence")
+
+			## Smooth Edge
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_smooth_edge_ui:
+				split.prop(scene, "toggle_smooth_edge_ui", text="", icon="DOWNARROW_HLT")
 				
+			else:
+				split.prop(scene, "toggle_smooth_edge_ui", text="", icon="RIGHTARROW")
+			split.operator("tmc.smooth_edge", text = "Smooth Edge")
+			row.scale_y = 2.0
+			if scene.toggle_smooth_edge_ui:
+				child_box = layout.box()
+				row = child_box.row()
+				row.prop(scene, "curve_influence", text="Curve")
+				row = child_box.row()
+				row.prop(scene, "space_influence", text="Space")
+				row = child_box.row()
+				row.prop(scene, "relax_influence",  text="Relax")
+				row = child_box.row()
+				split = row.split(factor=0.4, align=True)
+				split.label(text="Loop Input:")
+				split.prop(scene, "smooth_input", text="")
+				
+				### Curve Settings
+				row = child_box.row()
+				curve_box = row.box()
+				row = curve_box.row()
+				row.label(text="Curve Settings:")
+				row = curve_box.row()
+				split = row.split(factor=0.4, align=True)
+				split.label(text="Interpolation:")
+				split.prop(scene, "curve_interpolation", text="")
+				row = curve_box.row()
+				row.prop(scene, "curve_boundaries", text="Boundaries")
+				row = curve_box.row()
+				row.prop(scene, "curve_regular", text="Regular Distribution")
+				row = curve_box.row()
+				split = row.split(factor=0.4, align=True)
+				split.label(text="Restriction:")
+				split.prop(scene, "curve_restriction", text="")
+
+				### Relax Settings
+				row = child_box.row()
+				relax_box = row.box()
+				row = relax_box.row()
+				row.label(text="Relax Settings:")
+				row = relax_box.row()
+				split = row.split(factor=0.4, align=True)
+				split.label(text="Restriction:")
+				split.prop(scene, "relax_iterations", text="")
+				row = relax_box.row()
+				row.prop(scene, "relax_regular", text="Regular Distribution")
+
+
 			## Clone element
 			main_box = layout.box()
 			row = main_box.row()
@@ -556,6 +611,17 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row = main_box.row(align=True)
 			row.label(text="Maya")
 			child_box = main_box.box()
+
+			# row = child_box.row(align=True)
+			# split = row.split(factor=0.2, align=True)
+			# row.label(text = "Forward:", icon="AXIS_FRONT")
+			# row.prop(scene, "blender_maya_axis_forward_combobox")
+	
+			# row = child_box.row(align=True)
+			# split = row.split(factor=0.2, align=True)
+			# row.label(text = "Up:", icon="AXIS_TOP")
+			# row.prop(scene, "blender_maya_axis_up_combobox")
+
 			row = child_box.row(align=True)
 			split = row.split(factor=0.2, align=True)
 			row.label(text = "Normal:", icon="NORMALS_VERTEX_FACE")

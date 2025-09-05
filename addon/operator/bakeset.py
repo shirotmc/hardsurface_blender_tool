@@ -10,6 +10,7 @@ class TMC_OP_RenameHighpoly(bpy.types.Operator):
     bl_description = "Rename highpoly object"
     bl_options = {'REGISTER', 'UNDO'}
 
+
     def execute(self, context):
         selected_object_list = [obj for obj in bpy.context.selected_objects]
         if len(selected_object_list) == 0:

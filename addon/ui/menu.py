@@ -42,10 +42,9 @@ class TMC_MT_Main_Menu(bpy.types.Menu):
         line.operator("tmc.clean_vertex_group", text="Vertex Group: Clean", icon="OUTLINER_DATA_MESH")
 
         line = box.row(align=True)
-        # box = pie.box().column(align=True)
-        # box.scale_x = 1.2
-        # box.scale_y = 1.5
-        # box.menu("TMC_MT_Material_Menu", text="Material", icon="MATERIAL_DATA")
+        line.scale_x = 1.2
+        line.scale_y = 1.5
+        line.operator("tmc.bevel", text="Bevel", icon="OUTLINER_DATA_MESH")
         
         # box = pie.box().column(align=True)
         # box.scale_x = 1.2

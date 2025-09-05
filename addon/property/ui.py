@@ -66,6 +66,11 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		default=False
 	)
 
+	bpy.types.Scene.toggle_smooth_edge_ui = bpy.props.BoolProperty(
+		name="Enable Smooth Edge UI",
+		default=False
+	)
+
 	bpy.types.Scene.toggle_collection_area_ui = bpy.props.BoolProperty(
 		name="Enable Collection UI",
 		default=False
@@ -108,13 +113,30 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	name="Normal",
 	items=(("Lock", "Lock", "Lock", "", 0),
 	("Unlock", "Unlock", "Unlock", "", 1))
+)
+
+	bpy.types.Scene.blender_maya_axis_forward_combobox = bpy.props.EnumProperty(
+	name="",
+	items=(("X", "X", "X", "", 0),
+	("Y", "Y", "Y", "", 1),
+	("Z", "Z", "Z", "", 2),
+	("-X", "-X", "-X", "", 3),
+	("-Y", "-Y", "-Y", "", 4),
+	("-Z", "-Z", "-Z", "", 5)),
+	default="Y"
 	)
 
-	bpy.types.Scene.rizom_path = bpy.props.StringProperty(
+	bpy.types.Scene.blender_maya_axis_up_combobox = bpy.props.EnumProperty(
 	name="",
-	description="Rizom path",
-	subtype='FILE_PATH',
-	update=update_rizom_path_ui)
+	items=(("X", "X", "X", "", 0),
+	("Y", "Y", "Y", "", 1),
+	("Z", "Z", "Z", "", 2),
+	("-X", "-X", "-X", "", 3),
+	("-Y", "-Y", "-Y", "", 4),
+	("-Z", "-Z", "-Z", "", 5)),
+	default="Z"
+	)
+
 	#endregion
 
 	#region Bevel
@@ -352,6 +374,17 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		description="Distribute vertices at constant distances along the loop",
 		default=True
 	)
+
+	bpy.types.Scene.relax_influence = bpy.props.FloatProperty(
+		name="Influence",
+		description="Force of the tool",
+		default=100.0,
+		min=0.0,
+		max=100.0,
+		precision=1,
+		subtype='PERCENTAGE'
+	)
+
 	#endregion
 
 	#region space properties
@@ -447,8 +480,72 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		description="Restrictions on how the vertices can be moved",
 		default='none'
 		)
-
 	#endregion
+
+	#region curve properties
+	bpy.types.Scene.curve_boundaries = bpy.props.BoolProperty(
+		name="Boundaries",
+		description="Limit the tool to work within the boundaries of the selected vertices",
+		default=False
+		)
+	bpy.types.Scene.curve_influence = bpy.props.FloatProperty(
+		name="Influence",
+		description="Force of the tool",
+		default=100.0,
+		min=0.0,
+		max=100.0,
+		precision=1,
+		subtype='PERCENTAGE'
+		)
+	bpy.types.Scene.curve_interpolation = bpy.props.EnumProperty(
+		name="Interpolation",
+		items=(("cubic", "Cubic", "Natural cubic spline, smooth results"),
+			  ("linear", "Linear", "Simple and fast linear algorithm")),
+		description="Algorithm used for interpolation",
+		default='cubic'
+		)
+	bpy.types.Scene.curve_lock_x = bpy.props.BoolProperty(
+		name="Lock X",
+		description="Lock editing of the x-coordinate",
+		default=False
+		)
+	bpy.types.Scene.curve_lock_y = bpy.props.BoolProperty(
+		name="Lock Y",
+		description="Lock editing of the y-coordinate",
+		default=False
+		)
+	bpy.types.Scene.curve_lock_z = bpy.props.BoolProperty(
+		name="Lock Z",
+		description="Lock editing of the z-coordinate",
+		default=False
+		)
+	bpy.types.Scene.curve_regular = bpy.props.BoolProperty(
+		name="Regular",
+		description="Distribute vertices at constant distances along the curve",
+		default=True
+		)
+	
+	bpy.types.Scene.curve_restriction = bpy.props.EnumProperty(
+		name="Restriction",
+		items=(("none", "None", "No restrictions on vertex movement"),
+			  ("extrude", "Extrude only", "Only allow extrusions (no indentations)"),
+			  ("indent", "Indent only", "Only allow indentation (no extrusions)")),
+		description="Restrictions on how the vertices can be moved",
+		default='none'
+		)
+	#endregion
+
+	#region smooth properties
+	bpy.types.Scene.smooth_input = bpy.props.EnumProperty(
+		name="Input",
+		items=(("all", "Parallel (all)", "Also use non-selected "
+				"parallel loops as input"),
+			("selected", "Selection", "Only use selected vertices as input")),
+		description="Loops that are smoothed",
+		default='selected'
+	)
+	#endregion
+
 
 	#region screenshot properties
 	bpy.types.Scene.camera_zoom_value = bpy.props.IntProperty(
@@ -469,19 +566,3 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		update=update_screenshot_path_ui)
 
 	#endregion
-
-	#region material properties
-	# coalition_stage = bpy.props.EnumProperty(name="Stage",
-	# 	items=(("VIS0", "VIS0", ""),
-	# 			("VIS1", "VIS1", "")),
-	# 	description="Select Coalition stage")
-
-	# udim_number = bpy.props.IntProperty(
-	# 	name="",
-	# 	description=":",
-	# 	default=1,
-	# 	min=1,
-	# 	max=5,
-	# 	step=1)
-	#endregion
-
