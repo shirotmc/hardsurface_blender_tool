@@ -1337,7 +1337,7 @@ def register(bl_info):
     updater.private_token = None  # "tokenstring"
 
     # Choose your own username, must match website (not needed for GitLab).
-    updater.user = "tmc1998"
+    updater.user = "shirotmc"
 
     # Choose your own repository, must match git name for GitHUb and Bitbucket,
     # for GitLab use project ID (numbers only).
@@ -1346,7 +1346,7 @@ def register(bl_info):
     # updater.addon = # define at top of module, MUST be done first
 
     # Website for manual addon download, optional but recommended to set.
-    updater.website = "https://github.com/tmc1998/hardsurface-blender-tool/"
+    updater.website = "https://github.com/shirotmc/hardsurface-blender-tool/"
 
     # Addon subfolder path.
     # "sample/path/to/addon"

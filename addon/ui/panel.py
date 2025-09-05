@@ -612,15 +612,15 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row.label(text="Maya")
 			child_box = main_box.box()
 
-			row = child_box.row(align=True)
-			split = row.split(factor=0.2, align=True)
-			row.label(text = "Forward:", icon="AXIS_FRONT")
-			row.prop(scene, "blender_maya_axis_forward_combobox")
+			# row = child_box.row(align=True)
+			# split = row.split(factor=0.2, align=True)
+			# row.label(text = "Forward:", icon="AXIS_FRONT")
+			# row.prop(scene, "blender_maya_axis_forward_combobox")
 	
-			row = child_box.row(align=True)
-			split = row.split(factor=0.2, align=True)
-			row.label(text = "Up:", icon="AXIS_TOP")
-			row.prop(scene, "blender_maya_axis_up_combobox")
+			# row = child_box.row(align=True)
+			# split = row.split(factor=0.2, align=True)
+			# row.label(text = "Up:", icon="AXIS_TOP")
+			# row.prop(scene, "blender_maya_axis_up_combobox")
 
 			row = child_box.row(align=True)
 			split = row.split(factor=0.2, align=True)
