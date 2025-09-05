@@ -1341,12 +1341,12 @@ def register(bl_info):
 
     # Choose your own repository, must match git name for GitHUb and Bitbucket,
     # for GitLab use project ID (numbers only).
-    updater.repo = "hardsurface-blender-tool"
+    updater.repo = "hardsurface_blender_tool"
 
     # updater.addon = # define at top of module, MUST be done first
 
     # Website for manual addon download, optional but recommended to set.
-    updater.website = "https://github.com/shirotmc/hardsurface-blender-tool/"
+    updater.website = "https://github.com/shirotmc/hardsurface_blender_tool/"
 
     # Addon subfolder path.
     # "sample/path/to/addon"
