@@ -627,8 +627,8 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row.label(text = "Normal:", icon="NORMALS_VERTEX_FACE")
 			row.prop(scene, "blender_maya_normal_radiobox", expand = True)
 			row = child_box.row(align=True)
-			row.operator("tmc.export_to_maya", text = "Export Maya", icon="EXPORT")
 			row.operator("tmc.import_from_maya", text = "Import Maya", icon="IMPORT")
+			row.operator("tmc.export_to_maya", text = "Export Maya", icon="EXPORT")
 			row.scale_y = 1.5
 
 		# Capture Tab UI

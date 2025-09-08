@@ -24,7 +24,7 @@ CAMERA_LIST = ["top", "bottom", "front", "left", "right", "back", "persp1", "per
 
 # File Tool:
 ## Maya
-BLENDER_MAYA_FBX_PATH = "C:/Blender_ImportExport/BLENDER_MAYA.fbx"
+BLENDER_MAYA_MAX_FBX_PATH = "C:/Blender_ImportExport/BLENDER_MAYA_MAX.fbx"
 
 ## Rizom
 RIZOM_CONFIG = None

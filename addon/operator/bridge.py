@@ -9,7 +9,7 @@ class TMC_OP_ImportFromMaya(bpy.types.Operator):
     bl_description = "Import from Maya"
 
     def execute(self, context):
-        maya_to_blender_function(self, context, variable.BLENDER_MAYA_FBX_PATH)
+        maya_to_blender_function(self, context, variable.BLENDER_MAYA_MAX_FBX_PATH)
         return {'FINISHED'}
 
 class TMC_OP_ExportToMaya(bpy.types.Operator):
@@ -18,7 +18,7 @@ class TMC_OP_ExportToMaya(bpy.types.Operator):
     bl_description = "Export to Maya"
 
     def execute(self, context):
-        blender_to_maya_function(self, context, variable.BLENDER_MAYA_FBX_PATH)
+        blender_to_maya_function(self, context, variable.BLENDER_MAYA_MAX_FBX_PATH)
         return {'FINISHED'}
 
 #region Support Function    
