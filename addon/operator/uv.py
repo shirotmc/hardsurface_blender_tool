@@ -1,10 +1,40 @@
 import bpy, traceback
+import bmesh
+from math import radians
 
 from ..utility.mouse import mouse_warp
 from ..utility.draw import draw_quad, draw_text, get_blf_text_dims
 from ..utility.addon import get_prefs
 
 from ..ui import controller
+
+
+class TMC_OP_UVBySharpEdge(bpy.types.Operator):
+    bl_idname = "tmc.uv_by_sharp_edge"
+    bl_label = "UV by Sharp Edge"
+    bl_description = "Unwrap UV by Sharp Edge"
+    
+    def execute(self, context):
+        object_list = [obj for obj in bpy.context.selected_objects]
+        for o in bpy.context.selected_objects:
+            o.select_set(False)
+        for obj in object_list:
+            obj.select_set(True)
+            # Ensure Edit mode and get bmesh from edit mesh
+            bpy.ops.object.mode_set(mode='EDIT')
+            me = obj.data
+            bm = bmesh.from_edit_mesh(me)
+            # Mark seams on edges that are selected
+            for e in bm.edges:
+                if not e.smooth:
+                    e.seam = True
+            # push changes to mesh
+            bmesh.update_edit_mesh(me, loop_triangles=False, destructive=False)
+            # select all faces then unwrap
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.001)
+            bpy.ops.object.mode_set(mode='OBJECT')
+        return {'FINISHED'}
 
 class TMC_OP_RenameUV1(bpy.types.Operator):
     bl_idname = "tmc.rename_uv1"

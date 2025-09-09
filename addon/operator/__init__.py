@@ -45,6 +45,7 @@ classes = [
 	TMC_OP_CleanMaterialSlots,
 	TMC_OP_DeleteAllMaterials,
 	## UV
+	TMC_OP_UVBySharpEdge,
 	TMC_OP_RenameUV1,
 	TMC_OP_DeleteRedundantUV,
 	## Bakeset

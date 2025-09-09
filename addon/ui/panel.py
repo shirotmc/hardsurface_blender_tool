@@ -432,6 +432,10 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			if scene.toggle_uv_area_ui:
 				child_box = main_box.box()
 				row = child_box.row()
+				row.operator("tmc.uv_by_sharp_edge", text = "UV by Sharp Edge")
+				row.scale_y = 1.5
+				child_box = main_box.box()
+				row = child_box.row()
 				row.prop(scene, "uvset1_name", text="UV1")
 				row.operator("tmc.rename_uv1", text = "Rename")
 				row.scale_y = 1.5
