@@ -2,6 +2,7 @@ import bpy
 from bpy.props import PointerProperty
 # Menu
 from .bevel import *
+from .boolean import *
 ## Panel
 from .check import *
 from .modifier import *
@@ -20,7 +21,8 @@ from .bakeset import *
 classes = [
 	# Menu
 	TMC_OP_Bevel,
-	
+	TMC_OP_Boolean,
+
 	# Panel
 	## Check
 	TMC_OP_CheckAll,
@@ -39,6 +41,7 @@ classes = [
 	TMC_OP_SelectObjectFromCurrentMirror,
 	TMC_OP_SetCurrentMirrorToTargetMirror,
 	## Collection
+	TMC_OP_CollapseAllCollections,
 	TMC_OP_ToggleCurrentHideGroup,
 	## Material
 	TMC_OP_DeleteDuplicateMaterials,

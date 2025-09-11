@@ -8,21 +8,6 @@ class TMC_MT_Main_Menu(bpy.types.Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
-        # Material
-        box = pie.column(align=True)
-        line = box.row(align=True)
-        line.scale_x = 1.2
-        line.scale_y = 1.5
-        line.operator("tmc.delete_duplicate_materials", text="Material: Delete Duplicate", icon="MATERIAL_DATA")
-        line = box.row(align=True)
-        line.scale_x = 1.2
-        line.scale_y = 1.5
-        line.operator("tmc.clean_material_slots", text="Material: Clean Slots", icon="NODE_MATERIAL")
-        line = box.row(align=True)
-        line.scale_x = 1.2
-        line.scale_y = 1.5
-        line.operator("tmc.delete_all_materials", text="Material: Delete", icon="CANCEL")
-
         # Modifier
         box = pie.column(align=True)
         line = box.row(align=True)
@@ -34,17 +19,12 @@ class TMC_MT_Main_Menu(bpy.types.Menu):
         line.scale_y = 1.5
         line.operator("tmc.apply_modifier", text="Modifier: Apply", icon="CHECKMARK")
 
-        # Vetex Group
+        # Boolean
         box = pie.column(align=True)
         line = box.row(align=True)
         line.scale_x = 1.2
         line.scale_y = 1.5
-        line.operator("tmc.clean_vertex_group", text="Vertex Group: Clean", icon="OUTLINER_DATA_MESH")
-
-        line = box.row(align=True)
-        line.scale_x = 1.2
-        line.scale_y = 1.5
-        line.operator("tmc.bevel", text="Bevel", icon="OUTLINER_DATA_MESH")
+        line.operator("tmc.boolean", text="Boolean", icon="MOD_BOOLEAN")
         
         # box = pie.box().column(align=True)
         # box.scale_x = 1.2

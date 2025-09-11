@@ -75,6 +75,22 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row.operator("tmc.get_bevel_modifiers_from_vertex", text = "Get Bevel Modifiers (Vertex)")
 				row.scale_y = 1.5
 
+			## Boolean
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_boolean_modifier_ui:
+				split.prop(scene, "toggle_boolean_modifier_ui", text="", icon="DOWNARROW_HLT")
+
+			else:
+				split.prop(scene, "toggle_boolean_modifier_ui", text="", icon="RIGHTARROW")
+			split.label(text="Boolean")
+			if scene.toggle_boolean_modifier_ui:
+				child_box = main_box.box()
+				row = child_box.row(align=True)
+				row.operator("tmc.boolean", text = "Simple Boolean")
+				row.scale_y = 2.0
+
 			## Mirror
 			main_box = layout.box()
 			row = main_box.row()
@@ -359,6 +375,10 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				split.prop(scene, "toggle_collection_area_ui", text="", icon="RIGHTARROW")
 			split.label(text="Collection")
 			if scene.toggle_collection_area_ui:
+				child_box = main_box.box()
+				row = child_box.row(align=True)
+				row.operator("tmc.collapse_all_collections", text = "Collapse All Collections")
+				row.scale_y = 1.5
 				child_box = main_box.box()
 				row = child_box.row(align=True)
 				row.operator("tmc.toggle_current_hide_group", text = "Toggle Hide Collections")

@@ -7,6 +7,29 @@ from ..utility.addon import get_prefs
 from ..ui import controller
 from ..utility import variable
 
+class TMC_OP_CollapseAllCollections(bpy.types.Operator):
+    bl_idname = "tmc.collapse_all_collections"
+    bl_label = "Collapse All Collections"
+    bl_description = "Collapse All Collections"
+
+    def getChildrenCollectionRecursion(self, result_list, collection_list):
+        for children_collection in collection_list:
+            result_list.append(children_collection)
+            self.getChildrenCollectionRecursion(result_list, children_collection.children)
+
+    def execute(self, context):
+        for win in bpy.context.window_manager.windows:
+                        for area in win.screen.areas:
+                            if 'OUTLINER' in area.type:
+                                if area.spaces and area.spaces.active and area.spaces.active.display_mode=='VIEW_LAYER':
+                                    for region in area.regions:
+                                        if 'WINDOW' in region.type:
+                                            override = {'area': area, 'region': region}
+                                            with bpy.context.temp_override(**override):
+                                                bpy.ops.outliner.expanded_toggle()
+                                                bpy.ops.outliner.expanded_toggle()
+        return {'CANCELLED'}
+
 class TMC_OP_ToggleCurrentHideGroup(bpy.types.Operator):
     bl_idname = "tmc.toggle_current_hide_group"
     bl_label = "Toggle Current Hide Group"

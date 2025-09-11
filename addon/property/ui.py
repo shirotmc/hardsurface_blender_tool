@@ -29,6 +29,11 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		default=False
 	)
 
+	bpy.types.Scene.toggle_boolean_modifier_ui = bpy.props.BoolProperty(
+		name="Enable Boolean Modifier UI",
+		default=False
+	)
+
 	bpy.types.Scene.toggle_mirror_modifier_ui = bpy.props.BoolProperty(
 		name="Enable Mirror Modifier UI",
 		default=False
