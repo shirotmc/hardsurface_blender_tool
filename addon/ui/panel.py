@@ -633,7 +633,7 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			## Maya - Blender
 			main_box = layout.box()
 			row = main_box.row(align=True)
-			row.label(text="Maya")
+			row.label(text="Blender - Maya - Max")
 			child_box = main_box.box()
 
 			# row = child_box.row(align=True)
