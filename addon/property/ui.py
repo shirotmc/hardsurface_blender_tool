@@ -1,6 +1,9 @@
 import bpy
 from ..ui.controller import *
 
+
+# Material UI helpers and properties removed for rework
+
 class TMC_UIProperty(bpy.types.PropertyGroup):
 
 	bpy.types.Scene.menu_tab = bpy.props.EnumProperty(
@@ -11,7 +14,7 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 				("MISC", "Misc", "Misc Function", "SCENE_DATA", 2),		
 				("CHECK", "Check", "Check Function", "CHECKMARK", 3),	
 				("BRIDGE", "Bridge", "Software Bridge", "UV_SYNC_SELECT", 4),
-				("CAPTURE", "Capture", "Capture Function", "RESTRICT_RENDER_OFF", 5)))
+				("MATERIAL", "Material", "Material Function", "MATERIAL", 5)))
 
 	## Modifier
 	bpy.types.Scene.toggle_apply_modifier_ui = bpy.props.BoolProperty(
@@ -91,23 +94,84 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		default=False
 	)
 
-	bpy.types.Scene.toggle_material_area_ui = bpy.props.BoolProperty(
-		name="Enable Material UI",
-		default=False
+	# Material UI properties
+	# Index of the selected material in the UI list (used by template_list)
+	bpy.types.Scene.material_index = bpy.props.IntProperty(
+		name="Material Index",
+		default=0
 	)
+
+	# Index of the material row currently being edited (-1 = none)
+	bpy.types.Scene.material_edit_index = bpy.props.IntProperty(
+		name="Material Edit Index",
+		default=-1
+	)
+
+	# Optional simple search string (not yet wired to a filter UIList)
+	bpy.types.Scene.material_search = bpy.props.StringProperty(
+		name="Material Search",
+		default=""
+	)
+
+	# Color used when creating a new material and for editing selected material
+	def _tmc_update_material_color(self, context):
+		try:
+			scene = context.scene
+			idx = getattr(scene, 'material_index', 0)
+			mats = bpy.data.materials
+			if 0 <= idx < len(mats):
+				mat = mats[idx]
+				col = tuple(getattr(scene, 'material_add_color', (0.8, 0.8, 0.8)))
+				# If material uses nodes, try to set Principled BSDF Base Color
+				try:
+					if getattr(mat, 'use_nodes', False) and mat.node_tree:
+						nodes = mat.node_tree.nodes
+						bsdf = None
+						for n in nodes:
+							if getattr(n, 'type', '') == 'BSDF_PRINCIPLED' or n.name.lower().find('principled') != -1:
+								bsdf = n
+								break
+						if bsdf is not None and 'Base Color' in bsdf.inputs:
+							# set RGBA with alpha=1.0
+							bsdf.inputs['Base Color'].default_value = (col[0], col[1], col[2], 1.0)
+							return
+				except Exception:
+					pass
+				# Fallback to diffuse_color
+				try:
+					if hasattr(mat, 'diffuse_color'):
+						if len(mat.diffuse_color) == 4:
+							mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
+						else:
+							mat.diffuse_color = (col[0], col[1], col[2])
+				except Exception:
+					pass
+		except Exception:
+			pass
+
+	bpy.types.Scene.material_add_color = bpy.props.FloatVectorProperty(
+	name="Add Material Color",
+	subtype='COLOR',
+	default=(0.8, 0.8, 0.8),
+	min=0.0,
+	max=1.0,
+	size=3,
+	description="Color used for newly added materials. Editing this updates the selected material.",
+	update=_tmc_update_material_color
+)
 
 	bpy.types.Scene.toggle_uv_area_ui = bpy.props.BoolProperty(
 		name="Enable UV UI",
 		default=False
 	)
 
+	bpy.types.Scene.toggle_capture_area_ui = bpy.props.BoolProperty(
+			name="Enable Capture UI",
+			default=False
+		)
+
 	bpy.types.Scene.toggle_bakeset_area_ui = bpy.props.BoolProperty(
 		name="Enable Bake Set UI",
-		default=False
-	)
-
-	bpy.types.Scene.toggle_coalition_area_ui = bpy.props.BoolProperty(
-		name="Enable Coalition UI",
 		default=False
 	)
 
@@ -143,6 +207,9 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	)
 
 	#endregion
+
+
+# Material row PropertyGroup removed for rework
 
 	#region Bevel
 	bpy.types.Scene.bevel_unit_value = bpy.props.FloatProperty(

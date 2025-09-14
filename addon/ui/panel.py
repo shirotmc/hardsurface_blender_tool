@@ -1,6 +1,90 @@
 import bpy
+import bmesh
 from .controller import *
 from ..utility import variable
+
+
+# Material UI and UIList classes removed for rework per user request
+
+
+class TMC_UL_MaterialList(bpy.types.UIList):
+	"""Simple UIList to display materials from bpy.data.materials"""
+
+	def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+		# data is bpy.data, item is a Material
+		mat = item
+		if self.layout_type in {'DEFAULT', 'COMPACT'}:
+			# Compute whether this material is assigned to the current selection
+			assigned = False
+			try:
+				selected_mats = set()
+				mode = getattr(context, 'mode', None)
+				if mode and str(mode).upper().startswith('EDIT'):
+					# In Edit Mode: check active object's selected faces
+					active_obj = context.active_object
+					if active_obj and active_obj.type == 'MESH':
+						try:
+							bm = bmesh.from_edit_mesh(active_obj.data)
+							for f in bm.faces:
+								if f.select:
+									mi = f.material_index
+									if 0 <= mi < len(active_obj.data.materials):
+										m = active_obj.data.materials[mi]
+										if m:
+											selected_mats.add(m)
+						except Exception:
+							# Fallback to polygons if bmesh fails
+							for p in active_obj.data.polygons:
+								if p.select:
+									mi = p.material_index
+									if 0 <= mi < len(active_obj.data.materials):
+										m = active_obj.data.materials[mi]
+										if m:
+											selected_mats.add(m)
+				else:
+					# Object mode or other: collect materials from selected objects
+					for obj in context.selected_objects:
+						if obj.type != 'MESH':
+							continue
+						for m in obj.data.materials:
+							if m:
+								selected_mats.add(m)
+				assigned = (mat in selected_mats)
+			except Exception:
+				assigned = False
+
+			# Use same column splits as header so preview, checkbox and name line up
+			row = layout.row(align=True)
+			# Left: read-only checkbox indicating assignment to current selection
+			col = row.split(factor=0.05, align=True)
+			try:
+				if assigned:
+					col.label(text="", icon='CHECKBOX_HLT')
+				else:
+					col.label(text="", icon='CHECKBOX_DEHLT')
+			except Exception:
+				col.label(text="")
+			# Next: preview swatch (narrow)
+			col = row.split(factor=0.08, align=True)
+			try:
+				icon = getattr(mat.preview, 'icon_id', None)
+				if icon:
+					col.label(text="", icon_value=icon)
+				else:
+					# fallback: small color block
+					col.prop(mat, "diffuse_color", text="")
+			except Exception:
+				col.label(text="")
+			# Name column (wide). Draw editable input with no emboss when active so it blends with the row highlight
+			col = row.split(factor=0.87, align=True)
+			if index == getattr(context.scene, 'material_index', 0):
+				col.prop(mat, "name", text="", emboss=False)
+			else:
+				col.label(text=mat.name)
+		elif self.layout_type in {'GRID'}:
+			layout.alignment = 'CENTER'
+			layout.label(text="")
+
 
 class TMC_MT_Main_Panel(bpy.types.Panel):
 	bl_idname = "TMC_MT_Main_Panel"
@@ -417,28 +501,6 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row.scale_y = 1.5
 			#endregion
 
-			## Material
-			main_box = layout.box()
-			row = main_box.row()
-			split = row.split(factor=0.15, align=True)
-			if context.scene.toggle_material_area_ui:
-				split.prop(scene, "toggle_material_area_ui", text="", icon="DOWNARROW_HLT")
-				
-			else:
-				split.prop(scene, "toggle_material_area_ui", text="", icon="RIGHTARROW")
-			split.label(text="Material")
-			if scene.toggle_material_area_ui:
-				child_box = main_box.box()
-				row = child_box.row(align=True)
-				row.operator("tmc.delete_duplicate_materials", text = "Delete Duplicate Materials")
-				row.scale_y = 1.5
-				row = child_box.row(align=True)
-				row.operator("tmc.clean_material_slots", text = "Delete All Material Slots")
-				row.scale_y = 1.5
-				row = child_box.row(align=True)
-				row.operator("tmc.delete_all_materials", text = "Clear All Materials")
-				row.scale_y = 1.5
-
 			## UV
 			main_box = layout.box()
 			row = main_box.row()
@@ -463,90 +525,80 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row.operator("tmc.delete_redundant_uv", text = "Delete Redundant UVSet")
 				row.scale_y = 1.5
 
-			## Bake Set
+			## Capture
 			main_box = layout.box()
 			row = main_box.row()
 			split = row.split(factor=0.15, align=True)
-			if context.scene.toggle_bakeset_area_ui:
-				split.prop(scene, "toggle_bakeset_area_ui", text="", icon="DOWNARROW_HLT")
-				
+			if context.scene.toggle_capture_area_ui:
+				split.prop(scene, "toggle_capture_area_ui", text="", icon="DOWNARROW_HLT")
+
 			else:
-				split.prop(scene, "toggle_bakeset_area_ui", text="", icon="RIGHTARROW")
-			split.label(text="Bake Set")
-			if scene.toggle_bakeset_area_ui:
-				child_box = main_box.box()
-				row = child_box.row()
-				row.prop(scene, "bakeset_name", text="Name")
+				split.prop(scene, "toggle_capture_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Capture")
+			if scene.toggle_capture_area_ui:
+				# Line 1
+				row = main_box.row()
+				row.prop(scene, "screenshot_path")
 				row.scale_y = 1.5
-				
-				row = child_box.row()
-				row.prop(scene, "threshold_value", text="Threshold")
+				# Line 2
+				row = main_box.row(align=True)
+				row.prop(scene, "camera_zoom_value", text = "Zoom ")
 				row.scale_y = 1.5
+				# Line 3
+				row = main_box.row()
+				row.scale_y = 2.0
+				row.operator("tmc.auto_screenshot", text="Auto", icon="SCENE")
+				row.operator("tmc.custom_screenshot", text="Custom", icon="RESTRICT_RENDER_OFF")
 
-				row = child_box.row()
-				row.operator("tmc.rename_highpoly", text = "Rename Highpoly")
-				row.scale_y = 1.5
-				row = child_box.row()
-				row.operator("tmc.create_bakeset", text = "Create Bake Set")
-				row.scale_y = 1.5
-				row = child_box.row()
-				row.operator("tmc.auto_create_bakeset", text = "Auto Create Bake Set")
-				row.scale_y = 1.5
 
-				row = child_box.row()
-				row.prop(scene, "bakeset_export_path", text="Path")
-				row.scale_y = 1.5
-
-				row = child_box.row()
-				row.prop(scene, "export_bakeset_mode", text="Mode")
-				row.scale_y = 1.5
-
-				row = child_box.row()
-				row.prop(scene, "export_bakeset_unlock_normal", text="Unlock Normal")
-				row.scale_y = 1.5
-
-				row = child_box.row()
-				row.operator("tmc.export_bakeset", text = "Export Selected High/Low Objects")
-				row.scale_y = 1.5
-				
-				row = child_box.row()
-				row.operator("tmc.export_selected_highlow", text = "Export All Bake Set")
-				row.scale_y = 1.5
-
-			# ## Coalition Projects
+			# ## Bake Set
 			# main_box = layout.box()
 			# row = main_box.row()
 			# split = row.split(factor=0.15, align=True)
-			# if context.scene.toggle_coalition_area_ui:
-			# 	split.prop(scene, "toggle_coalition_area_ui", text="", icon="DOWNARROW_HLT")
+			# if context.scene.toggle_bakeset_area_ui:
+			# 	split.prop(scene, "toggle_bakeset_area_ui", text="", icon="DOWNARROW_HLT")
 				
 			# else:
-			# 	split.prop(scene, "toggle_coalition_area_ui", text="", icon="RIGHTARROW")
-			# split.label(text="Coalition")
-			# if context.scene.toggle_coalition_area_ui:
+			# 	split.prop(scene, "toggle_bakeset_area_ui", text="", icon="RIGHTARROW")
+			# split.label(text="Bake Set")
+			# if scene.toggle_bakeset_area_ui:
 			# 	child_box = main_box.box()
 			# 	row = child_box.row()
-			# 	row.label(text = "Material Setup:")
-			# 	row = child_box.row()
-			# 	row.prop(scene, "coalition_stage", text="Stage")
+			# 	row.prop(scene, "bakeset_name", text="Name")
 			# 	row.scale_y = 1.5
+				
 			# 	row = child_box.row()
-			# 	split = row.split(factor=0.24)
-			# 	split.label(text = "UDIM:")
-			# 	split.prop(scene, "udim_number")
-			# 	row.scale_y = 1.5
-			# 	row = child_box.row()
-			# 	row.operator("object.material_action", text = "Create Material List")
-			# 	row.scale_y = 1.5
-			# 	row = child_box.row()
-			# 	row.operator("object.material_action", text = "Clear Materials")
+			# 	row.prop(scene, "threshold_value", text="Threshold")
 			# 	row.scale_y = 1.5
 
-			# 	child_box = main_box.box()
 			# 	row = child_box.row()
-			# 	row.label(text = "Shape Keys Setup:")
+			# 	row.operator("tmc.rename_highpoly", text = "Rename Highpoly")
+			# 	row.scale_y = 1.5
 			# 	row = child_box.row()
-			# 	row.operator("object.shapekeys_action", text = "Setup Sculpting Shape Keys")
+			# 	row.operator("tmc.create_bakeset", text = "Create Bake Set")
+			# 	row.scale_y = 1.5
+			# 	row = child_box.row()
+			# 	row.operator("tmc.auto_create_bakeset", text = "Auto Create Bake Set")
+			# 	row.scale_y = 1.5
+
+			# 	row = child_box.row()
+			# 	row.prop(scene, "bakeset_export_path", text="Path")
+			# 	row.scale_y = 1.5
+
+			# 	row = child_box.row()
+			# 	row.prop(scene, "export_bakeset_mode", text="Mode")
+			# 	row.scale_y = 1.5
+
+			# 	row = child_box.row()
+			# 	row.prop(scene, "export_bakeset_unlock_normal", text="Unlock Normal")
+			# 	row.scale_y = 1.5
+
+			# 	row = child_box.row()
+			# 	row.operator("tmc.export_bakeset", text = "Export Selected High/Low Objects")
+			# 	row.scale_y = 1.5
+				
+			# 	row = child_box.row()
+			# 	row.operator("tmc.export_selected_highlow", text = "Export All Bake Set")
 			# 	row.scale_y = 1.5
 
 		# Check Tab UI
@@ -655,21 +707,40 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row.operator("tmc.export_to_maya", text = "Export", icon="EXPORT")
 			row.scale_y = 1.5
 
-		# Capture Tab UI
-		if scene.menu_tab == "CAPTURE":
+		# Material Tab UI
+		if scene.menu_tab == "MATERIAL":
+			# Material list: show all materials in the file (scene-wide)
 			main_box = layout.box()
-			row = main_box.row(align=True)
-			row.label(text="Screenshot")
-			# Line 1
-			row = main_box.row()
-			row.prop(scene, "screenshot_path")
+			child_box = main_box.box()
+			# Use a template_list over bpy.data.materials via a shortcut:
+			# We provide a dummy pointer to the window manager to host the index
+			# but we'll simply draw items using the UIList class below.
+			# Draw header with same row style/alignment as items for better theme parity
+			header = child_box.row(align=True)
+			header.scale_y = 1.0
+			# Left preview swatch column (narrow)
+			#col = header.split(factor=0.3, align=True)
+			header.label(text="Material List", icon='MATERIAL')
+			# Material list with right-side Select button
+			row = child_box.row(align=True)
 			row.scale_y = 1.5
-			# Line 2
-			row = main_box.row(align=True)
-			row.prop(scene, "camera_zoom_value", text = "Zoom ")
-			row.scale_y = 1.5
-			# Line 3
-			row = main_box.row()
-			row.scale_y = 2.0
-			row.operator("tmc.auto_screenshot", text="Auto", icon="SCENE")
-			row.operator("tmc.custom_screenshot", text="Custom", icon="RESTRICT_RENDER_OFF")
+			# Left: material list (wide)
+			col = row.split(factor=0.65)
+			col.template_list("TMC_UL_MaterialList", "", bpy.data, "materials", context.scene, "material_index")
+			# Right: small column for action buttons (stacked)
+			col_buttons = col.column(align=True)
+			col_buttons.operator("tmc.select_objects_by_material", text="Select Objects")
+			col_buttons.operator("tmc.assign_material_to_selection", text="Assign Selected")
+
+			col_buttons.separator()
+			col_buttons.operator("tmc.add_material", text="Add Material")
+			# Color picker for new material base color (also edits selected material)
+			try:
+				col_buttons.prop(scene, "material_add_color", text="")
+			except Exception:
+				pass
+			
+			col_buttons.separator()
+			col_buttons.operator("tmc.clean_material_slots", text="Clean Slots")
+			col_buttons.operator("tmc.delete_duplicate_materials", text="Delete Duplicates")
+			col_buttons.operator("tmc.delete_all_materials", text="Delete All")

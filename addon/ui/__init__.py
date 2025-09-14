@@ -6,8 +6,9 @@ from .menu import *
 from .panel import *
 
 classes = [
-	TMC_MT_Main_Menu,
+ 	TMC_MT_Main_Menu,
 	TMC_MT_Main_Panel,
+	TMC_UL_MaterialList,
 ]
 
 def register_menus():
