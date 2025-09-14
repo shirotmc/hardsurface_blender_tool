@@ -49,6 +49,7 @@ classes = [
 	TMC_OP_DeleteAllMaterials,
 	TMC_OP_AddMaterial,
 	TMC_OP_SelectObjectsByMaterial,
+	TMC_OP_SelectFacesOnActiveByMaterial,
 	TMC_OP_AssignMaterialToSelection,
 	## UV
 	TMC_OP_UVBySharpEdge,

@@ -726,11 +726,14 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row.scale_y = 1.5
 			# Left: material list (wide)
 			col = row.split(factor=0.65)
-			col.template_list("TMC_UL_MaterialList", "", bpy.data, "materials", context.scene, "material_index")
+			col.template_list("TMC_UL_MaterialList", "", bpy.data, "materials", context.scene, "material_index", rows=7)
 			# Right: small column for action buttons (stacked)
 			col_buttons = col.column(align=True)
-			col_buttons.operator("tmc.select_objects_by_material", text="Select Objects")
-			col_buttons.operator("tmc.assign_material_to_selection", text="Assign Selected")
+			col_buttons.operator("tmc.select_faces_on_active_by_material", text="Select Active Object")
+			col_buttons.operator("tmc.select_objects_by_material", text="Select All Objects")
+
+			col_buttons.separator()
+			col_buttons.operator("tmc.assign_material_to_selection", text="Assign Material")
 
 			col_buttons.separator()
 			col_buttons.operator("tmc.add_material", text="Add Material")

@@ -435,6 +435,102 @@ class TMC_OP_SelectObjectsByMaterial(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class TMC_OP_SelectFacesOnActiveByMaterial(bpy.types.Operator):
+    """Select faces on the active object that use the active material in the list"""
+    bl_idname = "tmc.select_faces_on_active_by_material"
+    bl_label = "Select Faces on Active by Material"
+    bl_description = "Select faces on the active object that use the active material"
+
+    def execute(self, context):
+        idx = getattr(context.scene, 'material_index', 0)
+        mats = bpy.data.materials
+        if idx < 0 or idx >= len(mats):
+            return {'CANCELLED'}
+        mat = mats[idx]
+
+        active_obj = context.active_object
+        if not active_obj or active_obj.type != 'MESH':
+            return {'CANCELLED'}
+
+        mesh = active_obj.data
+        # find material slot indices that reference the material
+        slot_indices = [i for i, m in enumerate(mesh.materials) if m == mat]
+        if not slot_indices:
+            # nothing to select on this object
+            return {'CANCELLED'}
+
+        # remember and switch mode if needed
+        prev_mode = None
+        try:
+            prev_mode = context.mode
+        except Exception:
+            try:
+                prev_mode = bpy.context.mode
+            except Exception:
+                prev_mode = None
+
+        if prev_mode and prev_mode.startswith('EDIT'):
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception:
+                pass
+
+        # Deselect everything then select the active object only
+        try:
+            bpy.ops.object.select_all(action='DESELECT')
+        except Exception:
+            pass
+        try:
+            active_obj.select_set(True)
+        except Exception:
+            pass
+        try:
+            context.view_layer.objects.active = active_obj
+        except Exception:
+            pass
+
+        # Use bmesh to set face selection to those using the material
+        try:
+            mesh = active_obj.data
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            bm.faces.ensure_lookup_table()
+            any_selected = False
+            for f in bm.faces:
+                if f.material_index in slot_indices:
+                    f.select = True
+                    any_selected = True
+                else:
+                    f.select = False
+            if any_selected:
+                bm.to_mesh(mesh)
+                mesh.update()
+            bm.free()
+        except Exception:
+            try:
+                bm.free()
+            except Exception:
+                pass
+
+        # Enter edit mode on the active object so face selection is visible
+        try:
+            context.view_layer.objects.active = active_obj
+            bpy.ops.object.mode_set(mode='EDIT')
+        except Exception:
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except Exception:
+                pass
+
+        # ensure face select mode
+        try:
+            bpy.ops.mesh.select_mode(type='FACE')
+        except Exception:
+            pass
+
+        return {'FINISHED'}
+
+
 class TMC_OP_AssignMaterialToSelection(bpy.types.Operator):
     """Assign active material from the list to selected objects or selected faces"""
     bl_idname = "tmc.assign_material_to_selection"
