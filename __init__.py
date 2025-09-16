@@ -2,7 +2,7 @@ bl_info = {
 	"name": "HardSurface Tool",
 	"description": "This add-on provides a set of custom tools for working efficiently in Blender.",
 	"author": "Canh Tran",
-	"version": (1, 1, 6),
+	"version": (1, 1, 7),
 	"blender": (2, 80, 0),
 	"location": "View3D",
 	"category": "3D View"
@@ -13,6 +13,16 @@ sys.dont_write_bytecode = True
 import bpy
 from . import addon_updater_ops
 from .addon.register import register_addon, unregister_addon
+from bpy.app.handlers import persistent
+
+
+@persistent
+def _tmc_on_load(dummy):
+	try:
+		from .addon.ui import handlers as _ui_handlers
+		_ui_handlers.register()
+	except Exception:
+		pass
 
 
 @addon_updater_ops.make_annotations
@@ -78,15 +88,27 @@ class AddonPreferences(bpy.types.AddonPreferences):
 
 
 def register():
-    # Update add-ons
-    addon_updater_ops.register(bl_info)
-    bpy.utils.register_class(AddonPreferences)
-    # Unregister add-ons
-    register_addon()
+	# Update add-ons
+	addon_updater_ops.register(bl_info)
+	bpy.utils.register_class(AddonPreferences)
+	# Ensure our load handler is attached so runtime handlers re-register
+	try:
+		if _tmc_on_load not in bpy.app.handlers.load_post:
+			bpy.app.handlers.load_post.append(_tmc_on_load)
+	except Exception:
+		pass
+	# Unregister add-ons
+	register_addon()
 
 def unregister():
-    # Update add-ons
-    addon_updater_ops.unregister()
-    bpy.utils.unregister_class(AddonPreferences)
-    # Unregister add-ons
-    unregister_addon()
+	# Update add-ons
+	addon_updater_ops.unregister()
+	bpy.utils.unregister_class(AddonPreferences)
+	# Remove our load handler
+	try:
+		if _tmc_on_load in bpy.app.handlers.load_post:
+			bpy.app.handlers.load_post.remove(_tmc_on_load)
+	except Exception:
+		pass
+	# Unregister add-ons
+	unregister_addon()

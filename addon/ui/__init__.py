@@ -4,6 +4,7 @@ from bpy.utils import previews
 from ..utility import variable
 from .menu import *
 from .panel import *
+from . import handlers
 
 classes = [
  	TMC_MT_Main_Menu,
@@ -23,6 +24,12 @@ def register_menus():
 	pcoll.load("true_icon", os.path.join(my_icons_dir, "true.png"), 'IMAGE')
 	variable.PREVIEW_COLLECTIONS["main"] = pcoll
 
+	# register handlers to sync selection -> material index
+	try:
+		handlers.register()
+	except Exception:
+		pass
+
 def unregister_menus():
 	from bpy.utils import unregister_class
 	for cls in reversed(classes):
@@ -32,3 +39,9 @@ def unregister_menus():
 	for pcoll in variable.PREVIEW_COLLECTIONS.values():
 		bpy.utils.previews.remove(pcoll)
 	variable.PREVIEW_COLLECTIONS.clear()
+
+	# unregister handlers
+	try:
+		handlers.unregister()
+	except Exception:
+		pass

@@ -46,8 +46,27 @@ class TMC_OP_Boolean(bpy.types.Operator):
         modifier.object = boolean_obj
 
         # move the boolean object to the boolean collection
-        boolean_collection.objects.link(boolean_obj)
-        boolean_obj.users_collection[0].objects.unlink(boolean_obj)
+        # Safely move the boolean object into the boolean collection.
+        # Capture original collections first, then link to the target
+        # and unlink from the originals (but don't unlink the target).
+        try:
+            orig_cols = list(boolean_obj.users_collection)
+        except Exception:
+            orig_cols = []
+        try:
+            if boolean_collection not in boolean_obj.users_collection:
+                boolean_collection.objects.link(boolean_obj)
+        except Exception:
+            pass
+        # Unlink from original collections except the boolean collection
+        for col in orig_cols:
+            try:
+                if col is boolean_collection:
+                    continue
+                if boolean_obj.name in col.objects:
+                    col.objects.unlink(boolean_obj)
+            except Exception:
+                pass
 
         # parent boolean object to main object but keep transform
         boolean_obj.parent = active

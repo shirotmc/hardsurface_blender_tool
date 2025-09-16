@@ -719,18 +719,62 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			header = child_box.row(align=True)
 			header.scale_y = 1.0
 			# Left preview swatch column (narrow)
-			#col = header.split(factor=0.3, align=True)
 			header.label(text="Material List", icon='MATERIAL')
 			# Material list with right-side Select button
 			row = child_box.row(align=True)
 			row.scale_y = 1.5
 			# Left: material list (wide)
 			col = row.split(factor=0.65)
+			# If in Edit Mode and there is a selected face, update scene.material_index
+			# so the material list selects that material.
+			try:
+				mode = getattr(context, 'mode', None)
+				if mode and str(mode).upper().startswith('EDIT'):
+					active_obj = context.active_object
+					if active_obj and active_obj.type == 'MESH':
+						selected_mat = None
+						try:
+							bm = bmesh.from_edit_mesh(active_obj.data)
+							for f in bm.faces:
+								if f.select:
+									mi = f.material_index
+									if 0 <= mi < len(active_obj.data.materials):
+										m = active_obj.data.materials[mi]
+										if m:
+											selected_mat = m
+											break
+						except Exception:
+							# fallback to polygon data
+							for p in active_obj.data.polygons:
+								if p.select:
+									mi = p.material_index
+									if 0 <= mi < len(active_obj.data.materials):
+										m = active_obj.data.materials[mi]
+										if m:
+											selected_mat = m
+											break
+						if selected_mat is not None:
+							mats_list = list(bpy.data.materials)
+							if selected_mat in mats_list:
+								new_idx = mats_list.index(selected_mat)
+								if getattr(context.scene, 'material_index', None) != new_idx:
+									context.scene.material_index = new_idx
+									# Force UI redraw so template_list updates immediately
+									try:
+										for area in context.screen.areas:
+											try:
+												area.tag_redraw()
+											except Exception:
+												pass
+									except Exception:
+										pass
+			except Exception:
+				pass
 			col.template_list("TMC_UL_MaterialList", "", bpy.data, "materials", context.scene, "material_index", rows=7)
 			# Right: small column for action buttons (stacked)
 			col_buttons = col.column(align=True)
-			col_buttons.operator("tmc.select_faces_on_active_by_material", text="Select Active Object")
-			col_buttons.operator("tmc.select_objects_by_material", text="Select All Objects")
+			col_buttons.operator("tmc.select_faces_on_active_by_material", text="Select On Active")
+			col_buttons.operator("tmc.select_objects_by_material", text="Select On Scene")
 
 			col_buttons.separator()
 			col_buttons.operator("tmc.assign_material_to_selection", text="Assign Material")

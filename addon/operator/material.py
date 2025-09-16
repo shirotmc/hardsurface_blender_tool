@@ -190,13 +190,29 @@ class TMC_OP_AddMaterial(bpy.types.Operator):
                             bsdf = None
                     if bsdf is not None and 'Base Color' in bsdf.inputs:
                         bsdf.inputs['Base Color'].default_value = (col[0], col[1], col[2], 1.0)
+                        # Also update viewport display color if possible
+                        try:
+                            if hasattr(mat, 'diffuse_color'):
+                                if len(mat.diffuse_color) == 4:
+                                    mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
+                                else:
+                                    mat.diffuse_color = (col[0], col[1], col[2])
+                            if hasattr(mat, 'color'):
+                                mat.color = (col[0], col[1], col[2], 1.0)
+                        except Exception:
+                            pass
                     else:
                         # fallback to diffuse_color
-                        if hasattr(mat, 'diffuse_color'):
-                            if len(mat.diffuse_color) == 4:
-                                mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-                            else:
-                                mat.diffuse_color = (col[0], col[1], col[2])
+                        try:
+                            if hasattr(mat, 'diffuse_color'):
+                                if len(mat.diffuse_color) == 4:
+                                    mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
+                                else:
+                                    mat.diffuse_color = (col[0], col[1], col[2])
+                            if hasattr(mat, 'color'):
+                                mat.color = (col[0], col[1], col[2], 1.0)
+                        except Exception:
+                            pass
             except Exception:
                 # Fallback to diffuse_color if nodes fail
                 try:
@@ -205,6 +221,8 @@ class TMC_OP_AddMaterial(bpy.types.Operator):
                             mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
                         else:
                             mat.diffuse_color = (col[0], col[1], col[2])
+                    if hasattr(mat, 'color'):
+                        mat.color = (col[0], col[1], col[2], 1.0)
                 except Exception:
                     pass
         except Exception:

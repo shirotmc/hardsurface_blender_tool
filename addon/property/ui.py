@@ -134,6 +134,17 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 						if bsdf is not None and 'Base Color' in bsdf.inputs:
 							# set RGBA with alpha=1.0
 							bsdf.inputs['Base Color'].default_value = (col[0], col[1], col[2], 1.0)
+							# Also update viewport display color if possible
+							try:
+								if hasattr(mat, 'diffuse_color'):
+									if len(mat.diffuse_color) == 4:
+										mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
+									else:
+										mat.diffuse_color = (col[0], col[1], col[2])
+								if hasattr(mat, 'color'):
+									mat.color = (col[0], col[1], col[2], 1.0)
+							except Exception:
+								pass
 							return
 				except Exception:
 					pass
