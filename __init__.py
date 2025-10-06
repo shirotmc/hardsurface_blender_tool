@@ -2,7 +2,7 @@ bl_info = {
 	"name": "HardSurface Tool",
 	"description": "This add-on provides a set of custom tools for working efficiently in Blender.",
 	"author": "Canh Tran",
-	"version": (1, 1, 7),
+	"version": (1, 1, 8),
 	"blender": (2, 80, 0),
 	"location": "View3D",
 	"category": "3D View"

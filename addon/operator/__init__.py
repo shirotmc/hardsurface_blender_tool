@@ -17,10 +17,11 @@ from .mirror import *
 from .collection import *
 from .uv import *
 from .bakeset import *
+from .auto_delete import *
+from .edge_constraint import *
 
 classes = [
 	# Menu
-	TMC_OP_Bevel,
 	TMC_OP_Boolean,
 
 	# Panel
@@ -84,6 +85,8 @@ classes = [
 	TMC_OP_SmoothEdge,
 	### Flatten Face
 	TMC_OP_FlattenFace,
+	### Edge Constraints (Rotate/Scale along edge direction)
+	TMC_OP_EdgeConstraints,
 	### Loop Tools
 	LoopToolsProps,
 	Circle,
@@ -107,7 +110,10 @@ classes = [
 	### Vertex Group
 	TMC_OP_CleanVertexGroup,
 	### Vertex Normal
-	TMC_OP_Set_Normal_With_Active_Face
+	TMC_OP_Set_Normal_With_Active_Face,
+
+	# Utilities
+	TMC_OP_AutoDelete,
 ]
 
 def menu_func(self, context):
