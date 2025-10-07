@@ -536,70 +536,71 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				split.prop(scene, "toggle_capture_area_ui", text="", icon="RIGHTARROW")
 			split.label(text="Capture")
 			if scene.toggle_capture_area_ui:
+				child_box = main_box.box()
 				# Line 1
-				row = main_box.row()
+				row = child_box.row()
 				row.prop(scene, "screenshot_path")
 				row.scale_y = 1.5
 				# Line 2
-				row = main_box.row(align=True)
+				row = child_box.row(align=True)
 				row.prop(scene, "camera_zoom_value", text = "Zoom ")
 				row.scale_y = 1.5
 				# Line 3
-				row = main_box.row()
+				row = child_box.row()
 				row.scale_y = 2.0
 				row.operator("tmc.auto_screenshot", text="Auto", icon="SCENE")
 				row.operator("tmc.custom_screenshot", text="Custom", icon="RESTRICT_RENDER_OFF")
 
 
-			# ## Bake Set
-			# main_box = layout.box()
-			# row = main_box.row()
-			# split = row.split(factor=0.15, align=True)
-			# if context.scene.toggle_bakeset_area_ui:
-			# 	split.prop(scene, "toggle_bakeset_area_ui", text="", icon="DOWNARROW_HLT")
+			## Bake Set
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_bakeset_area_ui:
+				split.prop(scene, "toggle_bakeset_area_ui", text="", icon="DOWNARROW_HLT")
 				
-			# else:
-			# 	split.prop(scene, "toggle_bakeset_area_ui", text="", icon="RIGHTARROW")
-			# split.label(text="Bake Set")
-			# if scene.toggle_bakeset_area_ui:
-			# 	child_box = main_box.box()
-			# 	row = child_box.row()
-			# 	row.prop(scene, "bakeset_name", text="Name")
-			# 	row.scale_y = 1.5
+			else:
+				split.prop(scene, "toggle_bakeset_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Bake Set")
+			if scene.toggle_bakeset_area_ui:
+				child_box = main_box.box()
+				row = child_box.row()
+				row.prop(scene, "bakeset_name", text="Name")
+				row.scale_y = 1.5
 				
-			# 	row = child_box.row()
-			# 	row.prop(scene, "threshold_value", text="Threshold")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.prop(scene, "threshold_value", text="Threshold")
+				row.scale_y = 1.5
 
-			# 	row = child_box.row()
-			# 	row.operator("tmc.rename_highpoly", text = "Rename Highpoly")
-			# 	row.scale_y = 1.5
-			# 	row = child_box.row()
-			# 	row.operator("tmc.create_bakeset", text = "Create Bake Set")
-			# 	row.scale_y = 1.5
-			# 	row = child_box.row()
-			# 	row.operator("tmc.auto_create_bakeset", text = "Auto Create Bake Set")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.operator("tmc.rename_highpoly", text = "Rename Highpoly")
+				row.scale_y = 1.5
+				row = child_box.row()
+				row.operator("tmc.create_bakeset", text = "Create Bake Set")
+				row.scale_y = 1.5
+				row = child_box.row()
+				row.operator("tmc.auto_create_bakeset", text = "Auto Create Bake Set")
+				row.scale_y = 1.5
 
-			# 	row = child_box.row()
-			# 	row.prop(scene, "bakeset_export_path", text="Path")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.prop(scene, "bakeset_export_path", text="Path")
+				row.scale_y = 1.5
 
-			# 	row = child_box.row()
-			# 	row.prop(scene, "export_bakeset_mode", text="Mode")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.prop(scene, "export_bakeset_mode", text="Mode")
+				row.scale_y = 1.5
 
-			# 	row = child_box.row()
-			# 	row.prop(scene, "export_bakeset_unlock_normal", text="Unlock Normal")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.prop(scene, "export_bakeset_unlock_normal", text="Unlock Normal")
+				row.scale_y = 1.5
 
-			# 	row = child_box.row()
-			# 	row.operator("tmc.export_bakeset", text = "Export Selected High/Low Objects")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.operator("tmc.export_selected_highlow", text = "Export Selected High/Low Objects")
+				row.scale_y = 1.5
 				
-			# 	row = child_box.row()
-			# 	row.operator("tmc.export_selected_highlow", text = "Export All Bake Set")
-			# 	row.scale_y = 1.5
+				row = child_box.row()
+				row.operator("tmc.export_bakeset", text = "Export All Bake Set")
+				row.scale_y = 1.5
 
 		# Check Tab UI
 		if scene.menu_tab == "CHECK":

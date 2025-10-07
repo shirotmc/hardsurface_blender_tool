@@ -19,6 +19,8 @@ from .uv import *
 from .bakeset import *
 from .auto_delete import *
 from .edge_constraint import *
+from .rebevel import TMC_OP_Unbevel, TMC_OP_BevelCurve, TMC_OP_reBevelCurve
+
 
 classes = [
 	# Menu
@@ -87,6 +89,10 @@ classes = [
 	TMC_OP_FlattenFace,
 	### Edge Constraints (Rotate/Scale along edge direction)
 	TMC_OP_EdgeConstraints,
+	### ReBevel (Mesh/Curve)
+	TMC_OP_Unbevel,
+	TMC_OP_BevelCurve,
+	TMC_OP_reBevelCurve,
 	### Loop Tools
 	LoopToolsProps,
 	Circle,

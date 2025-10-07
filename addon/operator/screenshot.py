@@ -69,7 +69,7 @@ def screenshot_function(context, mode):
 
     # Get file name
     file_name = bpy.path.basename(bpy.context.blend_data.filepath).rsplit(".", 1)[0]
-    folder_path = context.scene.screenshot_path
+    folder_path = context.scene.get("screenshot_path", "")
     # Screenshot path
     image_path = folder_path + file_name
 

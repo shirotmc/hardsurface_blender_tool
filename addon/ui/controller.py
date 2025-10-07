@@ -11,7 +11,6 @@ def show_message(context, icon, content):
     message_content = content
     context.window_manager.popup_menu(draw_message, icon=icon)
 
-
 def camera_zoom_value_ui_change(self, context):
     for area in context.screen.areas:
             if area.type == 'VIEW_3D':
@@ -89,18 +88,6 @@ def update_bevel_modifier_name_ui(self, context):
         context.scene.bevel_modifier_name = "BevelW"
     elif context.scene.bevel_type == "ANGLE":
         context.scene.bevel_modifier_name = "BevelA"
-
-def update_screenshot_path_ui(self, context):
-    context.scene.screenshot_path = context.scene.screenshot_path.replace('\\', '/')
-    return True
-
-def update_bakeset_export_path_ui(self, context):
-    context.scene.bakeset_export_path = context.scene.bakeset_export_path.replace('\\', '/')
-    return None
-
-def update_rizom_path_ui(self, context):
-    context.scene.rizom_path = context.scene.rizom_path.replace('\\', '/')
-    return True
 
 def update_edge_length_value_ui(context, value):
     context.scene.edge_length_value = value

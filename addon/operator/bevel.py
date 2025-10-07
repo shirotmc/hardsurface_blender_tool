@@ -1,6 +1,7 @@
 import bpy
 from ..ui import controller
 
+
 class TMC_OP_BevelCustomSetting(bpy.types.Operator):
     bl_idname = "tmc.bevel_with_custom_setting"
     bl_label = "Custom Bevel"

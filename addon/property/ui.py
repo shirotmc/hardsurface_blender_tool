@@ -353,8 +353,7 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		name="Path",
 		description="Export FBX Path",
 		default="D:/",
-		subtype='FILE_PATH',
-		update=update_bakeset_export_path_ui)
+		subtype='FILE_PATH')
 	#endregion
 
 
@@ -645,7 +644,6 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		name="",
 		description="Screenshot path",
 		default="D:/",
-		subtype='DIR_PATH',
-		update=update_screenshot_path_ui)
+		subtype='DIR_PATH')
 
 	#endregion
