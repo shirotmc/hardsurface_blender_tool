@@ -310,8 +310,7 @@ class TMC_OP_ExportSelectedHighLow(bpy.types.Operator):
 
 #region SUPPORT FUNCTION
 def check_highpoly_name(name):
-    split_list = name.rsplit("_", 1)
-    if split_list[0] == "HSTool_High" and split_list[-1].isnumeric():
+    if "HSTool_High" in name:
         return True
     else:
         return False
@@ -440,14 +439,36 @@ def export_bakeset_function(context, mode):
     
     # Export FBX
     bpy.ops.object.select_all(action='DESELECT')
-    print(export_mode)
     if export_mode == "Multiple":
         # Multiple Files
-        for mesh in mesh_list:
-            if bakeset_name in mesh.name:
+        if mode == 'selected':
+            # Group selected meshes by their primary collection so meshes in the same
+            # collection export into the same FBX file.
+            groups = {}
+            for mesh in mesh_list:
+                coll_name = mesh.users_collection[0].name if mesh.users_collection else 'Scene'
+                groups.setdefault(coll_name, []).append(mesh)
+
+            for coll_name, meshes in groups.items():
                 bpy.ops.object.select_all(action='DESELECT')
-                mesh.select_set(True)
-                export_fbx_for_baking(context, mesh.name, fbx_path)
+                for m in meshes:
+                    m.select_set(True)
+                export_fbx_for_baking(context, coll_name, fbx_path)
+        else:
+            # Export meshes located in each bakeset child collection's High/Low subcollections
+            pattern = re.compile(rf"^{re.escape(bakeset_name)}_(\d+)$")
+            child_collections = [c for c in bpy.data.collections if pattern.match(c.name)]
+            for child in child_collections:
+                # prefer Low then High (order doesn't matter but keeps consistency)
+                for sub_suffix in ("_Low", "_High"):
+                    subname = f"{child.name}{sub_suffix}"
+                    subcoll = bpy.data.collections.get(subname)
+                    if not subcoll:
+                        continue
+                    bpy.ops.object.select_all(action='DESELECT')
+                    for mesh in [o for o in subcoll.objects if o.type == 'MESH']:
+                        mesh.select_set(True)
+                    export_fbx_for_baking(context, subname, fbx_path)
     else:
         # Single Files
         highs = [o for o in mesh_list if o.name.rsplit("_", 2)[-2].lower() == "high"]
