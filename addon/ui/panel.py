@@ -620,6 +620,16 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			row = child_box.row(align=True)
 			row.operator("tmc.check_all", text = "Check All")
 			row.scale_y = 1.5
+
+			row = child_box.row(align=True)
+			split = row.split(factor=0.85, align=True)
+			split.operator("tmc.check_mesh_no_tris", text = "Mesh - Zero Tris")
+			if scene.check_mesh_no_tris:
+				split.operator("tmc.check_mesh_no_tris", text = "", icon_value = true_icon.icon_id)
+			else:
+				split.operator("tmc.check_mesh_no_tris", text = "", icon_value = false_icon.icon_id)
+			row.scale_y = 1.5
+
 			row = child_box.row(align=True)
 			split = row.split(factor=0.85, align=True)
 			split.operator("tmc.check_ngons_face", text = "N-gons Face")
@@ -684,6 +694,21 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			split.operator("tmc.check_silhouette", text = "Check Silhouette")
 			split.prop(scene, "viewport_background_color", text="")
 			split.scale_y = 1.5
+
+
+			## Check UVSet Number = 0
+			main_box = layout.box()
+			row = main_box.row(align=True)
+			row.label(text="UV")
+			child_box = main_box.box()
+			row = child_box.row(align=True)
+			split = row.split(factor=0.85, align=True)
+			split.operator("tmc.check_zero_uvset", text = "Zero UVSet")
+			if scene.check_zero_uvset:
+				split.operator("tmc.check_zero_uvset", text = "", icon_value = true_icon.icon_id)
+			else:
+				split.operator("tmc.check_zero_uvset", text = "", icon_value = false_icon.icon_id)
+			row.scale_y = 1.5
 
 		# Bridge Tab UI
 		if scene.menu_tab == "BRIDGE":

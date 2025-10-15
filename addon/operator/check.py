@@ -15,6 +15,15 @@ class TMC_OP_CheckAll(bpy.types.Operator):  # check all
         check_all(self, context)
         return {'FINISHED'}
 
+class TMC_OP_CheckMeshNoTris(bpy.types.Operator):  # check mesh no tris
+    bl_idname = "tmc.check_mesh_no_tris"
+    bl_label = "Check Mesh No Tris"
+    bl_description = 'check mesh no tris from selected objects'
+
+    def execute(self, context):
+        check_mesh_no_tris_function(self, context)
+        return {'FINISHED'}
+
 class TMC_OP_CheckNgonsFace(bpy.types.Operator):   # check ngons face
     bl_idname = "tmc.check_ngons_face"
     bl_label = "Check Ngons Face"
@@ -118,11 +127,44 @@ def check_all(self, context):
         err = list(set(err + check_isolated_vertex_function(self, context)))
         bpy.ops.object.mode_set(mode='OBJECT')
 
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in selection:
+            obj.select_set(True)
+        err = list(set(err + check_mesh_no_tris_function(self, context)))
+        bpy.ops.object.mode_set(mode='OBJECT')
+
         # Select error mesh
         for obj in err:
             obj.select_set(True)
     else:
         controller.show_message(context, "ERROR", "Please select object to checking!")
+
+def check_mesh_no_tris_function(self, context):
+    selection = [obj for obj in bpy.context.selected_objects]
+    if selection:
+        err_obj = []
+        # check n-gons face
+        for obj in selection:
+            # Check if the object is a mesh
+            if obj.type == 'MESH':
+                # Check if the mesh has <3 vertices
+                if len(obj.data.polygons) == 0:
+                    # If no faces, select the object
+                    err_obj.append(obj)
+
+        # Select error elements on mesh
+        bpy.ops.object.select_all(action='DESELECT')
+        if len(err_obj) > 0: 
+            for obj in err_obj:
+                obj.select_set(True)
+            # Change button icon
+            context.scene.check_mesh_no_tris = False
+        else:
+            context.scene.check_mesh_no_tris = True
+        return err_obj
+    else:
+        controller.show_message(context, "ERROR", "Please select object to checking!")
+        return None
 
 def check_ngons_face_function(self, context):
     selection = [obj for obj in bpy.context.selected_objects]
@@ -401,6 +443,37 @@ def check_isolated_vertex_function(self, context):
     else:
         controller.show_message(context, "ERROR", "Please select object to checking!")
         return None
+
+class TMC_OP_CheckZeroUVSet(bpy.types.Operator):
+    bl_idname = "tmc.check_zero_uvset"
+    bl_label = "Check Zero UV Set"
+    bl_description = "Check if any mesh has zero UV set"
+    
+    def execute(self, context):
+        err_obj = []
+        selection = [obj for obj in bpy.context.selected_objects]
+        for obj in selection:
+            # Check if the object is a mesh type
+            if obj.type == 'MESH':
+                # Access the mesh data
+                mesh = obj.data
+                
+                # Check if the mesh has any UV layers
+                if not mesh.uv_layers:  # An empty uv_layers collection evaluates to False
+                    # Select the object if it has no UV layers
+                    err_obj.append(obj)
+                    
+        # Select error mesh
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        if len(err_obj) > 0: 
+            for obj in err_obj:
+                obj.select_set(True)
+            # Change button icon
+            context.scene.check_zero_uvset = False
+        else:
+            context.scene.check_zero_uvset = True
+        return {'FINISHED'}
 
 def preview_silhouette_function(self, context):
     

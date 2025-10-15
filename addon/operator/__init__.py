@@ -30,12 +30,14 @@ classes = [
 	# Panel
 	## Check
 	TMC_OP_CheckAll,
+	TMC_OP_CheckMeshNoTris,
 	TMC_OP_CheckNgonsFace,
 	TMC_OP_CheckNonManifold,
 	TMC_OP_CheckIntersectFace,
 	TMC_OP_CheckZeroEdgeLength,
 	TMC_OP_CheckZeroFaceArea,
 	TMC_OP_CheckIsolatedVertex,
+	TMC_OP_CheckZeroUVSet,
 	TMC_OP_CheckSilhouette,
 	## Modifier
 	TMC_OP_ToggleModifier,

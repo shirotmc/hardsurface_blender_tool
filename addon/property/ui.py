@@ -280,6 +280,12 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	#endregion
 
 	#region Check
+	bpy.types.Scene.check_mesh_no_tris = bpy.props.BoolProperty(
+		name="Check Mesh No Tris Result",
+		description="Show no tris checking result",
+		default=True
+		)
+
 	bpy.types.Scene.check_ngons_face = bpy.props.BoolProperty(
 		name="Check N-gons Face Result",
 		description="Show n-gons face checking result",
@@ -313,6 +319,12 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	bpy.types.Scene.check_isolated_vertex = bpy.props.BoolProperty(
 		name="Check Isolated Vertex Result",
 		description="Show isolated vertex checking result",
+		default = True
+		)
+
+	bpy.types.Scene.check_zero_uvset = bpy.props.BoolProperty(
+		name="Check Zero UVSet Result",
+		description="Show zero UVSet checking result",
 		default = True
 		)
 

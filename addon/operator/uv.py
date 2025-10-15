@@ -8,7 +8,6 @@ from ..utility.addon import get_prefs
 
 from ..ui import controller
 
-
 class TMC_OP_UVBySharpEdge(bpy.types.Operator):
     bl_idname = "tmc.uv_by_sharp_edge"
     bl_label = "UV by Sharp Edge"
