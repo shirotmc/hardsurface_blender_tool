@@ -4,6 +4,7 @@ import gpu
 from gpu_extras.batch import batch_for_shader
 from mathutils import Vector, Matrix, Quaternion
 from math import sin, cos, pi
+import os
 
 # NOTE: These helpers are Blender 4.x safe and avoid deprecated bgl state.
 # They provide commonly needed draw operations in both 3D (POST_VIEW) and 2D (POST_PIXEL).
@@ -151,6 +152,37 @@ def draw_tris(coords, mx=Matrix(), color=(1,1,1,1), indices=None, xray=True):
     batch = batch_for_shader(shader, 'TRIS', {"pos": pos}, indices=indices)
     batch.draw(shader)
 
+def draw_image_2d(image, x, y, w, h, color=(1,1,1,1), src_rect=None):
+    """Draw a Blender image in 2D screen space (POST_PIXEL).
+    src_rect: optional (sx, sy, sw, sh) in pixels to sample from the image (origin top-left of image).
+    """
+    if image is None:
+        return
+    try:
+        tex = gpu.texture.from_image(image)
+    except Exception:
+        return
+    shader = gpu.shader.from_builtin('IMAGE')
+    # positions in screen space
+    pos = [(x, y, 0), (x+w, y, 0), (x+w, y+h, 0), (x, y+h, 0)]
+    if src_rect is None:
+        uv = [(0, 0), (1, 0), (1, 1), (0, 1)]
+    else:
+        sx, sy, sw, sh = src_rect
+        iw = image.size[0] if hasattr(image, 'size') else tex.width
+        ih = image.size[1] if hasattr(image, 'size') else tex.height
+        # Blender image origin is bottom-left; src_rect uses top-left origin, convert Y
+        sy_bl = ih - (sy + sh)
+        u0 = sx / iw; v0 = sy_bl / ih
+        u1 = (sx + sw) / iw; v1 = (sy_bl + sh) / ih
+        uv = [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+    idx = [(0,1,2), (0,2,3)]
+    gpu.state.blend_set('ALPHA')
+    shader.bind()
+    shader.uniform_sampler('image', tex)
+    batch = batch_for_shader(shader, 'TRIS', {"pos": pos, "texCoord": uv}, indices=idx)
+    batch.draw(shader)
+
 def draw_mesh_wire(data, color=(1,1,1,1), width=1.0, xray=True):
     # data can be (coords, indices) or a GPU batch tuple
     if isinstance(data, tuple) and len(data) == 2 and isinstance(data[0], list):
@@ -201,6 +233,9 @@ def draw_circle(loc=Vector(), rot=Quaternion(), radius=1.0, segments=64, color=(
     for i in range(segs):
         theta = 2*pi*i/segs
         coords.append(Vector((cos(theta)*radius, sin(theta)*radius, 0)))
+    # close the loop by repeating the first vertex so polyline drawing connects end->start
+    if coords:
+        coords.append(coords[0])
     # transform into place
     mx = Matrix.LocRotScale(loc, rot, Vector((1,1,1))) if len(loc) == 3 else Matrix()
     draw_line([mx @ p for p in coords], color=color, width=width, xray=xray)

@@ -660,6 +660,52 @@ class TMC_OP_reBevelCurve(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
+class TMC_OT_RebevelSmart(bpy.types.Operator):
+    bl_idname = "tmc.rebevel_smart"
+    bl_label = "ReBevel (Smart)"
+    bl_description = "ReBevel for mesh edges or curve points based on current context"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = getattr(context, 'active_object', None)
+        if not obj:
+            return False
+        # Curve edit mode supported by curve re-bevel
+        if obj.type == 'CURVE' and obj.mode == 'EDIT':
+            return True
+        # Mesh rebevel only in Edit Mesh with edge select mode
+        if obj.type == 'MESH' and context.mode == 'EDIT_MESH':
+            try:
+                sel_mode = context.scene.tool_settings.mesh_select_mode[:]
+            except Exception:
+                try:
+                    sel_mode = context.tool_settings.mesh_select_mode[:]
+                except Exception:
+                    sel_mode = (False, True, False)
+            return sel_mode == (False, True, False)
+        return False
+
+    def execute(self, context):
+        obj = context.active_object
+        if obj and obj.type == 'CURVE' and obj.mode == 'EDIT':
+            try:
+                bpy.ops.tmc.curve_re_bevel('INVOKE_DEFAULT')
+                return {'FINISHED'}
+            except Exception as e:
+                self.report({'ERROR'}, f'Curve ReBevel failed: {e}')
+                return {'CANCELLED'}
+        if obj and obj.type == 'MESH' and context.mode == 'EDIT_MESH':
+            try:
+                bpy.ops.tmc.re_bevel('INVOKE_DEFAULT')
+                return {'FINISHED'}
+            except Exception as e:
+                self.report({'ERROR'}, f'Mesh ReBevel failed: {e}')
+                return {'CANCELLED'}
+        self.report({'WARNING'}, 'ReBevel is only available in Edit Mesh (edge select) or Edit Curve modes')
+        return {'CANCELLED'}
+
+
 #!################################## END OF SPLINES  ###########################################################
 #!##############################################################################################################
 

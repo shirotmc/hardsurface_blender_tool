@@ -483,6 +483,10 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row = child_box.row(align=True)
 				row.operator("tmc.set_normal_with_active_face", text = "Set Normal From Last Face")
 				row.scale_y = 1.5
+				child_box = main_box.box()
+				row = child_box.row(align=True)
+				row.operator("tmc.clear_custom_normals_data", text = "Clear Custom Normals Data")
+				row.scale_y = 1.5
 
 			#region Vertex Group
 			main_box = layout.box()

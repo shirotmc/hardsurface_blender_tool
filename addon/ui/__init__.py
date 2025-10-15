@@ -7,7 +7,7 @@ from .panel import *
 from . import handlers
 
 classes = [
- 	TMC_MT_Main_Menu,
+	TMC_OT_HUDPieMenu,
 	TMC_MT_Main_Panel,
 	TMC_UL_MaterialList,
 ]

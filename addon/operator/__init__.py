@@ -11,6 +11,7 @@ from .modeling import *
 from .looptools import  LoopToolsProps, Circle, Curve, Flatten, Relax, Space
 from .normal import *
 from .vertex_group import *
+from .geometry_data import *
 from .bridge import *
 from .screenshot import *
 from .mirror import *
@@ -19,7 +20,7 @@ from .uv import *
 from .bakeset import *
 from .auto_delete import *
 from .edge_constraint import *
-from .rebevel import TMC_OP_Unbevel, TMC_OP_BevelCurve, TMC_OP_reBevelCurve
+from .rebevel import TMC_OP_Unbevel, TMC_OP_BevelCurve, TMC_OP_reBevelCurve, TMC_OT_RebevelSmart
 
 
 classes = [
@@ -93,6 +94,7 @@ classes = [
 	TMC_OP_Unbevel,
 	TMC_OP_BevelCurve,
 	TMC_OP_reBevelCurve,
+	TMC_OT_RebevelSmart,
 	### Loop Tools
 	LoopToolsProps,
 	Circle,
@@ -101,6 +103,8 @@ classes = [
 	Relax,
 	Space,
 
+	### Detach Element
+	TMC_OP_DetachElement,
 
 	### Clone Element
 	TMC_OP_CloneElement,
@@ -117,6 +121,9 @@ classes = [
 	TMC_OP_CleanVertexGroup,
 	### Vertex Normal
 	TMC_OP_Set_Normal_With_Active_Face,
+
+	### Geometry Data
+	TMC_OP_ClearCustomNormalsData,
 
 	# Utilities
 	TMC_OP_AutoDelete,

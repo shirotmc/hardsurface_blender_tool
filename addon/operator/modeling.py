@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 from mathutils import *
+from mathutils import Vector, Matrix
 from math import *
 
 from ..ui import controller
@@ -383,6 +384,54 @@ class TMC_OP_SmoothEdge(bpy.types.Operator):
 #endregion
 
 
+#region detach element
+class TMC_OP_DetachElement(bpy.types.Operator):
+	bl_idname = "tmc.detach_element"
+	bl_label = "detach element"
+	bl_description = 'detach selected element'
+
+	@classmethod
+	def poll(cls, context):
+		obj = getattr(context, 'active_object', None)
+		if not obj or obj.type != 'MESH':
+			return False
+		# Require Edit Mesh mode
+		if getattr(context, 'mode', '') != 'EDIT_MESH':
+			return False
+		# Require any component selection (vert/edge/face)
+		try:
+			bm = bmesh.from_edit_mesh(obj.data)
+			if any(v.select for v in bm.verts):
+				return True
+			if any(e.select for e in bm.edges):
+				return True
+			if any(f.select for f in bm.faces):
+				return True
+		except Exception:
+			# Fallback to mesh data flags in rare cases
+			try:
+				if any(p.select for p in obj.data.polygons):
+					return True
+				if any(e.select for e in obj.data.edges):
+					return True
+				if any(v.select for v in obj.data.vertices):
+					return True
+			except Exception:
+				pass
+		return False
+
+	def execute(self, context):
+		bpy.ops.mesh.separate(type='SELECTED')
+		bpy.ops.object.editmode_toggle()
+
+		new_object = bpy.context.selected_objects[-1]
+		bpy.context.active_object.select_set(False)
+		bpy.data.objects[new_object.name].select_set(True)
+		bpy.data.objects[new_object.name].select_get()
+		bpy.context.view_layer.objects.active = bpy.data.objects[new_object.name]
+		return {'FINISHED'}
+#endregion
+
 #region clone element
 class TMC_OP_CloneElement(bpy.types.Operator):
 	bl_idname = "tmc.clone_element"
@@ -391,9 +440,32 @@ class TMC_OP_CloneElement(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		if context.active_object != None:
-			if context.active_object.type == 'MESH':
+		obj = getattr(context, 'active_object', None)
+		if not obj or obj.type != 'MESH':
+			return False
+		# Require Edit Mesh mode
+		if getattr(context, 'mode', '') != 'EDIT_MESH':
+			return False
+		# Require any component selection (vert/edge/face)
+		try:
+			bm = bmesh.from_edit_mesh(obj.data)
+			if any(v.select for v in bm.verts):
 				return True
+			if any(e.select for e in bm.edges):
+				return True
+			if any(f.select for f in bm.faces):
+				return True
+		except Exception:
+			# Fallback to mesh data flags in rare cases
+			try:
+				if any(p.select for p in obj.data.polygons):
+					return True
+				if any(e.select for e in obj.data.edges):
+					return True
+				if any(v.select for v in obj.data.vertices):
+					return True
+			except Exception:
+				pass
 		return False
 
 	def execute(self, context):

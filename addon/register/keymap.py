@@ -4,14 +4,14 @@ addon_keymaps = []
 
 def register_keymaps():
     wm = bpy.context.window_manager
-    kc = wm.keyconfigs.addon
+    # Use addon keyconfig when available; fall back to user keyconfig if not
+    kc = wm.keyconfigs.addon or wm.keyconfigs.user
     if not kc:
         return
 
-    # Keymap: 3D View -> Shift+Q opens the TMC pie menu
+    # Keymap: 3D View -> Ctrl + Right Mouse opens the custom HUD circle menu (Maya-style)
     km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
-    kmi = km.keymap_items.new('wm.call_menu_pie', 'Q', 'PRESS', shift=True)
-    kmi.properties.name = 'TMC_MT_Main_Menu'
+    kmi = km.keymap_items.new('tmc.hud_pie', 'RIGHTMOUSE', 'PRESS', ctrl=True)
     addon_keymaps.append((km, kmi))
 
     # Keymap: Edit Mesh -> Backspace triggers context-aware auto delete
