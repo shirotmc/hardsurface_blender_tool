@@ -623,7 +623,7 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 
 			row = child_box.row(align=True)
 			split = row.split(factor=0.85, align=True)
-			split.operator("tmc.check_mesh_no_tris", text = "Mesh - Zero Tris")
+			split.operator("tmc.check_mesh_no_tris", text = "Mesh Zero Tris")
 			if scene.check_mesh_no_tris:
 				split.operator("tmc.check_mesh_no_tris", text = "", icon_value = true_icon.icon_id)
 			else:

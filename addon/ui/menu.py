@@ -349,12 +349,21 @@ class TMC_OT_HUDPieMenu(bpy.types.Operator):
             mx, my = self.mouse
             dx, dy = mx - cx, my - cy
             hovering_center_early = dx*dx + dy*dy <= (R_center * R_center)
-        hover_index_early = self.index if (0 <= getattr(self, 'index', -1) < n and not hovering_center_early) else -1
+        # compute enabled flags once and reuse
+        enabled_flags_early = []
+        try:
+            for entry in items:
+                enabled_flags_early.append(_is_item_enabled(context, entry))
+        except Exception:
+            enabled_flags_early = [True] * n
+        # only treat a slice as hovered for visuals if it's enabled
+        idx_current = getattr(self, 'index', -1)
+        hover_index_early = idx_current if (0 <= idx_current < n and not hovering_center_early and enabled_flags_early[idx_current]) else -1
 
         # base ring and spokes
         # Draw inner ring globally; outer border will be drawn per-slice (allows only hovered slice to expand)
         draw_circle(loc=(cx, cy, 0), radius=R_inner, segments=48, color=cfg['BORDER_COLOR'], width=2.0)
-        # Precompute hover state so we can skip spokes at hovered edges
+        # Precompute hover state so we can skip spokes at hovered edges (only for enabled slice)
         angles = getattr(self, '_angles', None)
         if not angles or len(angles) != n:
             angles = [-pi/2 + i * (2*pi / n) for i in range(n)]
@@ -364,7 +373,8 @@ class TMC_OT_HUDPieMenu(bpy.types.Operator):
             mx, my = self.mouse
             dx, dy = mx - cx, my - cy
             hovering_center = dx*dx + dy*dy <= (R_center * R_center)
-        hover_index_for_spokes = self.index if (0 <= getattr(self, 'index', -1) < n and not hovering_center) else -1
+        idx_current = getattr(self, 'index', -1)
+        hover_index_for_spokes = idx_current if (0 <= idx_current < n and not hovering_center and enabled_flags_early[idx_current]) else -1
         for j, a in enumerate(angles):
             # Skip spokes that coincide with hovered slice edges to hide the white seam
             if hover_index_for_spokes != -1 and (j == hover_index_for_spokes or j == ((hover_index_for_spokes + 1) % n)):
@@ -375,7 +385,7 @@ class TMC_OT_HUDPieMenu(bpy.types.Operator):
             y1 = cy + R_outer * math.sin(a)
             draw_line([(x0, y0, 0), (x1, y1, 0)], color=cfg['SPOKE_COLOR'], width=1.5)
 
-        # Draw outer arc border per slice; hovered slice uses extruded radius
+        # Draw outer arc border per slice; hovered and enabled slice uses extruded radius
         for i in range(n):
             a0_i = -pi/2 + i * (2*pi / n)
             a1_i = a0_i + (2*pi / n)
@@ -391,13 +401,8 @@ class TMC_OT_HUDPieMenu(bpy.types.Operator):
         # draw slice icons (use cached slice items/images if available)
         items = getattr(self, '_slice_items', None) or (self._items(context) or self._fallback_items())
         n = max(1, len(items))
-        # compute enabled flags once per draw
-        enabled_flags = []
-        try:
-            for entry in items:
-                enabled_flags.append(_is_item_enabled(context, entry))
-        except Exception:
-            enabled_flags = [True] * n
+        # reuse enabled flags from early computation
+        enabled_flags = enabled_flags_early if len(enabled_flags_early) == n else [True] * n
         # determine hover center before deciding slice visuals
         hovering_center = False
         if hasattr(self, 'mouse'):
@@ -405,7 +410,8 @@ class TMC_OT_HUDPieMenu(bpy.types.Operator):
             dx, dy = mx - cx, my - cy
             hovering_center = dx*dx + dy*dy <= (R_center * R_center)
 
-        hover_index = (self.index if (0 <= self.index < n and not hovering_center) else -1)
+        # only treat hover as active when the hovered slice is enabled
+        hover_index = (self.index if (0 <= self.index < n and not hovering_center and enabled_flags[self.index]) else -1)
 
         # Apply global pie growth when hovering a slice
         scale_pie = PIE_CONFIG.get('PIE_RADIUS_HOVER_SCALE', 1.0) if hover_index != -1 else 1.0
