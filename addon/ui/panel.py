@@ -14,42 +14,13 @@ class TMC_UL_MaterialList(bpy.types.UIList):
 		# data is bpy.data, item is a Material
 		mat = item
 		if self.layout_type in {'DEFAULT', 'COMPACT'}:
-			# Compute whether this material is assigned to the current selection
-			assigned = False
+			# Whether this material is assigned to the current selection.
+			# Uses a cached set computed once per selection change (see
+			# material.get_selected_materials) instead of scanning the mesh
+			# for every row on every redraw.
 			try:
-				selected_mats = set()
-				mode = getattr(context, 'mode', None)
-				if mode and str(mode).upper().startswith('EDIT'):
-					# In Edit Mode: check active object's selected faces
-					active_obj = context.active_object
-					if active_obj and active_obj.type == 'MESH':
-						try:
-							bm = bmesh.from_edit_mesh(active_obj.data)
-							for f in bm.faces:
-								if f.select:
-									mi = f.material_index
-									if 0 <= mi < len(active_obj.data.materials):
-										m = active_obj.data.materials[mi]
-										if m:
-											selected_mats.add(m)
-						except Exception:
-							# Fallback to polygons if bmesh fails
-							for p in active_obj.data.polygons:
-								if p.select:
-									mi = p.material_index
-									if 0 <= mi < len(active_obj.data.materials):
-										m = active_obj.data.materials[mi]
-										if m:
-											selected_mats.add(m)
-				else:
-					# Object mode or other: collect materials from selected objects
-					for obj in context.selected_objects:
-						if obj.type != 'MESH':
-							continue
-						for m in obj.data.materials:
-							if m:
-								selected_mats.add(m)
-				assigned = (mat in selected_mats)
+				from ..operator.material import get_selected_materials
+				assigned = (mat in get_selected_materials(context))
 			except Exception:
 				assigned = False
 
@@ -487,6 +458,30 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row = child_box.row(align=True)
 				row.operator("tmc.clear_custom_normals_data", text = "Clear Custom Normals Data")
 				row.scale_y = 1.5
+
+			## Hidden Triangulation
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_hidden_triangulation_area_ui:
+				split.prop(scene, "toggle_hidden_triangulation_area_ui", text="", icon="DOWNARROW_HLT")
+			else:
+				split.prop(scene, "toggle_hidden_triangulation_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Hidden Triangulation")
+			if scene.toggle_hidden_triangulation_area_ui:
+				child_box = main_box.box()
+				row = child_box.row(align=True)
+				label = "Hide Triangulation Lines" if scene.hidden_triangulation_enabled else "Show Triangulation Lines"
+				row.operator("tmc.toggle_hidden_triangulation", text=label)
+				row.scale_y = 1.5
+				column = child_box.column()
+				column.enabled = scene.hidden_triangulation_enabled
+				column.prop(scene, "hidden_triangulation_selected_only")
+				column.prop(scene, "hidden_triangulation_color")
+				column.prop(scene, "hidden_triangulation_line_width")
+				column.separator()
+				column.prop(scene, "hidden_triangulation_dash_length")
+				column.prop(scene, "hidden_triangulation_gap_length")
 
 			#region Vertex Group
 			main_box = layout.box()

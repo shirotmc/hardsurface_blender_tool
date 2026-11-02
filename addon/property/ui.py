@@ -1,5 +1,6 @@
 import bpy
 from ..ui.controller import *
+from ..operator.hidden_triangulation import hidden_triangulation_display_update, hidden_triangulation_enabled_update
 
 
 # Material UI helpers and properties removed for rework
@@ -94,6 +95,61 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 		default=False
 	)
 
+	bpy.types.Scene.toggle_hidden_triangulation_area_ui = bpy.props.BoolProperty(
+		name="Enable Hidden Triangulation UI",
+		default=False
+	)
+
+	bpy.types.Scene.hidden_triangulation_enabled = bpy.props.BoolProperty(
+		name="Show Hidden Triangulation",
+		default=False,
+		update=hidden_triangulation_enabled_update
+	)
+
+	bpy.types.Scene.hidden_triangulation_selected_only = bpy.props.BoolProperty(
+		name="Selected Meshes Only",
+		default=True,
+		update=hidden_triangulation_display_update
+	)
+
+	bpy.types.Scene.hidden_triangulation_color = bpy.props.FloatVectorProperty(
+		name="Line Color",
+		subtype='COLOR',
+		size=4,
+		min=0.0,
+		max=1.0,
+		default=(0.1, 1.0, 0.2, 1.0),
+		update=hidden_triangulation_display_update
+	)
+
+	bpy.types.Scene.hidden_triangulation_line_width = bpy.props.FloatProperty(
+		name="Line Width",
+		default=1.5,
+		min=1.0,
+		max=10.0,
+		update=hidden_triangulation_display_update
+	)
+
+	bpy.types.Scene.hidden_triangulation_dash_length = bpy.props.FloatProperty(
+		name="Dash Length",
+		default=0.04,
+		min=0.005,
+		max=1.0,
+		subtype='DISTANCE',
+		unit='LENGTH',
+		update=hidden_triangulation_display_update
+	)
+
+	bpy.types.Scene.hidden_triangulation_gap_length = bpy.props.FloatProperty(
+		name="Gap Length",
+		default=0.015,
+		min=0.001,
+		max=1.0,
+		subtype='DISTANCE',
+		unit='LENGTH',
+		update=hidden_triangulation_display_update
+	)
+
 	# Material UI properties
 	# Index of the selected material in the UI list (used by template_list)
 	bpy.types.Scene.material_index = bpy.props.IntProperty(
@@ -116,47 +172,13 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	# Color used when creating a new material and for editing selected material
 	def _tmc_update_material_color(self, context):
 		try:
+			from ..operator.material import apply_material_color
 			scene = context.scene
 			idx = getattr(scene, 'material_index', 0)
 			mats = bpy.data.materials
 			if 0 <= idx < len(mats):
-				mat = mats[idx]
 				col = tuple(getattr(scene, 'material_add_color', (0.8, 0.8, 0.8)))
-				# If material uses nodes, try to set Principled BSDF Base Color
-				try:
-					if getattr(mat, 'use_nodes', False) and mat.node_tree:
-						nodes = mat.node_tree.nodes
-						bsdf = None
-						for n in nodes:
-							if getattr(n, 'type', '') == 'BSDF_PRINCIPLED' or n.name.lower().find('principled') != -1:
-								bsdf = n
-								break
-						if bsdf is not None and 'Base Color' in bsdf.inputs:
-							# set RGBA with alpha=1.0
-							bsdf.inputs['Base Color'].default_value = (col[0], col[1], col[2], 1.0)
-							# Also update viewport display color if possible
-							try:
-								if hasattr(mat, 'diffuse_color'):
-									if len(mat.diffuse_color) == 4:
-										mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-									else:
-										mat.diffuse_color = (col[0], col[1], col[2])
-								if hasattr(mat, 'color'):
-									mat.color = (col[0], col[1], col[2], 1.0)
-							except Exception:
-								pass
-							return
-				except Exception:
-					pass
-				# Fallback to diffuse_color
-				try:
-					if hasattr(mat, 'diffuse_color'):
-						if len(mat.diffuse_color) == 4:
-							mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-						else:
-							mat.diffuse_color = (col[0], col[1], col[2])
-				except Exception:
-					pass
+				apply_material_color(mats[idx], col)
 		except Exception:
 			pass
 

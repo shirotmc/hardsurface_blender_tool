@@ -295,8 +295,9 @@ class TMC_OP_ExportBakeSet(bpy.types.Operator):
     bl_description = "Export bake set for selected object"
 
     def execute(self, context):
-        export_bakeset_function(context, 'all')
-        return {'FINISHED'}
+        if export_bakeset_function(context, 'all'):
+            return {'FINISHED'}
+        return {'CANCELLED'}
     
 class TMC_OP_ExportSelectedHighLow(bpy.types.Operator):
     bl_idname = "tmc.export_selected_highlow"
@@ -304,8 +305,9 @@ class TMC_OP_ExportSelectedHighLow(bpy.types.Operator):
     bl_description = "Export selected high/low mesh"
 
     def execute(self, context):
-        export_bakeset_function(context, 'selected')
-        return {'FINISHED'}
+        if export_bakeset_function(context, 'selected'):
+            return {'FINISHED'}
+        return {'CANCELLED'}
 
 
 #region SUPPORT FUNCTION
@@ -370,6 +372,22 @@ def check_overlap(context, object_a, object_b):
     else:
         return True
 
+def get_bakeset_export_folder(context):
+    raw_path = (context.scene.bakeset_export_path or "").strip()
+    if not raw_path:
+        return ""
+
+    resolved_path = bpy.path.abspath(raw_path)
+    if resolved_path.lower().endswith(".fbx"):
+        resolved_path = os.path.dirname(resolved_path)
+
+    folder_path = os.path.normpath(resolved_path)
+    if not folder_path:
+        return ""
+
+    os.makedirs(folder_path, exist_ok=True)
+    return folder_path
+
 def export_fbx_for_baking(context, object_name, folder_path):
     # Setting for low/high mesh
     if "high" in object_name.rsplit('_', 1)[-1].lower():
@@ -382,7 +400,7 @@ def export_fbx_for_baking(context, object_name, folder_path):
     else:
         smooth_type = 'OFF'
 
-    fbx_path = folder_path + object_name + ".fbx"
+    fbx_path = os.path.join(folder_path, object_name + ".fbx")
     bpy.ops.export_scene.fbx(filepath=fbx_path,
                             check_existing=True,
                             filter_glob="*.fbx",
@@ -423,7 +441,10 @@ def export_fbx_for_baking(context, object_name, folder_path):
 
 def export_bakeset_function(context, mode):
     # Get FBX folder
-    fbx_path = context.scene.get("bakeset_export_path", "")
+    fbx_path = get_bakeset_export_folder(context)
+    if not fbx_path:
+        controller.show_message(context, "ERROR", "Please set a valid BakeSet export path!")
+        return False
 
     # Get Bakeset name
     bakeset_name = context.scene.bakeset_name
@@ -485,4 +506,5 @@ def export_bakeset_function(context, mode):
 
     bpy.ops.object.select_all(action='DESELECT')
     controller.show_message(context, "INFO", "Export Bakeset: Done!")
+    return True
 #endregion

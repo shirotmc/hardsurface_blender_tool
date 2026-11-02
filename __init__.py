@@ -2,7 +2,7 @@ bl_info = {
 	"name": "HardSurface Tool",
 	"description": "This add-on provides a set of custom tools for working efficiently in Blender.",
 	"author": "Canh Tran",
-	"version": (1, 2, 2),
+	"version": (1, 3, 0),
 	"blender": (2, 80, 0),
 	"location": "View3D",
 	"category": "3D View"
@@ -14,6 +14,7 @@ import bpy
 from . import addon_updater_ops
 from .addon.register import register_addon, unregister_addon
 from bpy.app.handlers import persistent
+
 
 
 @persistent

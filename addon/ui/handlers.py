@@ -34,6 +34,14 @@ def _get_selected_material_from_active_mesh(context):
 
 def depsgraph_handler(depsgraph):
     try:
+        # Selection / mesh data may have changed; drop the cached material set
+        # so the material UIList recomputes it once on the next redraw.
+        try:
+            from ..utility import variable
+            variable.SELECTED_MATERIALS_CACHE["valid"] = False
+        except Exception:
+            pass
+
         ctx = bpy.context
         mat = _get_selected_material_from_active_mesh(ctx)
         if mat is None:

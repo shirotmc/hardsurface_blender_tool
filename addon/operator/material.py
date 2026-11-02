@@ -4,6 +4,118 @@ import bmesh
 from ..ui import controller
 from ..utility import variable
 
+
+def _get_principled_bsdf(mat, create=False):
+    """Return the material's Principled BSDF node.
+
+    Looks up an existing Principled node; when ``create`` is True and none is
+    found, a new one is created and linked to the Material Output. Returns None
+    if the material has no usable node tree (or creation fails).
+    """
+    node_tree = getattr(mat, 'node_tree', None)
+    if not (getattr(mat, 'use_nodes', False) and node_tree):
+        return None
+    nodes = node_tree.nodes
+    for n in nodes:
+        if getattr(n, 'type', '') == 'BSDF_PRINCIPLED' or 'principled' in n.name.lower():
+            return n
+    if not create:
+        return None
+    try:
+        bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+        output = next((n for n in nodes if getattr(n, 'type', '') == 'OUTPUT_MATERIAL'), None)
+        if output is not None:
+            node_tree.links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+        return bsdf
+    except Exception:
+        return None
+
+
+def apply_material_color(mat, col, create_node=False):
+    """Apply an RGB ``col`` to ``mat``.
+
+    Sets the Principled BSDF Base Color (when a node is available, optionally
+    creating one) and keeps the viewport display color in sync. All access is
+    best-effort so this is safe to call from UI update callbacks.
+    """
+    if mat is None:
+        return
+    rgb = (col[0], col[1], col[2])
+
+    # Principled BSDF base color
+    try:
+        bsdf = _get_principled_bsdf(mat, create=create_node)
+        if bsdf is not None and 'Base Color' in bsdf.inputs:
+            bsdf.inputs['Base Color'].default_value = (rgb[0], rgb[1], rgb[2], 1.0)
+    except Exception:
+        pass
+
+    # Viewport display color
+    try:
+        if hasattr(mat, 'diffuse_color'):
+            if len(mat.diffuse_color) == 4:
+                mat.diffuse_color = (rgb[0], rgb[1], rgb[2], mat.diffuse_color[3])
+            else:
+                mat.diffuse_color = rgb
+        if hasattr(mat, 'color'):
+            mat.color = (rgb[0], rgb[1], rgb[2], 1.0)
+    except Exception:
+        pass
+
+
+def _compute_selected_materials(context):
+    """Return the set of materials assigned to the current selection.
+
+    In Edit mode this is the materials of the active mesh's selected faces;
+    otherwise it is every material used by the selected objects. Mirrors the
+    original per-row logic but is meant to be called once and cached.
+    """
+    selected_mats = set()
+    try:
+        mode = getattr(context, 'mode', None)
+        if mode and str(mode).upper().startswith('EDIT'):
+            active_obj = context.active_object
+            if active_obj and active_obj.type == 'MESH':
+                mats = active_obj.data.materials
+                try:
+                    bm = bmesh.from_edit_mesh(active_obj.data)
+                    faces = (f for f in bm.faces if f.select)
+                except Exception:
+                    faces = (p for p in active_obj.data.polygons if p.select)
+                for f in faces:
+                    mi = f.material_index
+                    if 0 <= mi < len(mats) and mats[mi]:
+                        selected_mats.add(mats[mi])
+        else:
+            for obj in context.selected_objects:
+                if obj.type != 'MESH':
+                    continue
+                for m in obj.data.materials:
+                    if m:
+                        selected_mats.add(m)
+    except Exception:
+        pass
+    return selected_mats
+
+
+def get_selected_materials(context):
+    """Cached accessor for the current selection's materials.
+
+    The cache is invalidated by the depsgraph handler (and recomputed lazily
+    here) so the expensive mesh scan runs once per change rather than once per
+    UIList row drawn each redraw.
+    """
+    cache = variable.SELECTED_MATERIALS_CACHE
+    if not cache.get("valid"):
+        cache["mats"] = _compute_selected_materials(context)
+        cache["valid"] = True
+    return cache["mats"]
+
+
+def invalidate_selected_materials_cache():
+    variable.SELECTED_MATERIALS_CACHE["valid"] = False
+
+
 class TMC_OP_CleanMaterialSlots(bpy.types.Operator):
     bl_idname = "tmc.clean_material_slots"
     bl_label = "Clean Material Slots"
@@ -155,93 +267,21 @@ class TMC_OP_AddMaterial(bpy.types.Operator):
             i += 1
             name = f"{base}.{i}"
         mat = bpy.data.materials.new(name=name)
-        # Apply scene color to the new material (try Principled BSDF if nodes are used)
+
+        # Apply scene color to the new material (via Principled BSDF when nodes are used)
         try:
-            col = tuple(getattr(context.scene, 'material_add_color', (0.8, 0.8, 0.8)))
-            # ensure nodes are enabled for the material so we can set principled color
-            try:
-                if not getattr(mat, 'use_nodes', False):
-                    mat.use_nodes = True
-            except Exception:
-                pass
-            try:
-                if getattr(mat, 'use_nodes', False) and mat.node_tree:
-                    nodes = mat.node_tree.nodes
-                    bsdf = None
-                    for n in nodes:
-                        if getattr(n, 'type', '') == 'BSDF_PRINCIPLED' or n.name.lower().find('principled') != -1:
-                            bsdf = n
-                            break
-                    if bsdf is None:
-                        # create a principled node and connect to output
-                        try:
-                            bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-                            output = None
-                            for n in nodes:
-                                if getattr(n, 'type', '') == 'OUTPUT_MATERIAL':
-                                    output = n
-                                    break
-                            if output is not None:
-                                try:
-                                    mat.node_tree.links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
-                                except Exception:
-                                    pass
-                        except Exception:
-                            bsdf = None
-                    if bsdf is not None and 'Base Color' in bsdf.inputs:
-                        bsdf.inputs['Base Color'].default_value = (col[0], col[1], col[2], 1.0)
-                        # Also update viewport display color if possible
-                        try:
-                            if hasattr(mat, 'diffuse_color'):
-                                if len(mat.diffuse_color) == 4:
-                                    mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-                                else:
-                                    mat.diffuse_color = (col[0], col[1], col[2])
-                            if hasattr(mat, 'color'):
-                                mat.color = (col[0], col[1], col[2], 1.0)
-                        except Exception:
-                            pass
-                    else:
-                        # fallback to diffuse_color
-                        try:
-                            if hasattr(mat, 'diffuse_color'):
-                                if len(mat.diffuse_color) == 4:
-                                    mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-                                else:
-                                    mat.diffuse_color = (col[0], col[1], col[2])
-                            if hasattr(mat, 'color'):
-                                mat.color = (col[0], col[1], col[2], 1.0)
-                        except Exception:
-                            pass
-            except Exception:
-                # Fallback to diffuse_color if nodes fail
-                try:
-                    if hasattr(mat, 'diffuse_color'):
-                        if len(mat.diffuse_color) == 4:
-                            mat.diffuse_color = (col[0], col[1], col[2], mat.diffuse_color[3])
-                        else:
-                            mat.diffuse_color = (col[0], col[1], col[2])
-                    if hasattr(mat, 'color'):
-                        mat.color = (col[0], col[1], col[2], 1.0)
-                except Exception:
-                    pass
+            if not getattr(mat, 'use_nodes', False):
+                mat.use_nodes = True
         except Exception:
             pass
+        col = tuple(getattr(context.scene, 'material_add_color', (0.8, 0.8, 0.8)))
+        apply_material_color(mat, col, create_node=True)
+
         # Select the new material in the UI
         try:
             context.scene.material_index = list(bpy.data.materials).index(mat)
         except Exception:
             context.scene.material_index = 0
-        # Add to stored rows if collection exists
-        try:
-            scene = context.scene
-            if hasattr(scene, 'tmc_material_rows'):
-                item = scene.tmc_material_rows.add()
-                item.material = mat
-                item.visible = True
-                scene.tmc_material_rows_index = len(scene.tmc_material_rows) - 1
-        except Exception:
-            pass
         return {'FINISHED'}
 
 

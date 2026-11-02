@@ -113,14 +113,49 @@ def _get_addon_prefs():
         return None
 
 # -----------------------------
-# Simple, user-editable pie items
-# Edit this function to customize your pie menu entries.
-# Return a list of tuples: (label, operator_idname, props_dict)
-# - label: displayed text for the slice
-# - operator_idname: e.g. 'wm.search' or 'view3d.view_persportho'. Use None for a disabled/placeholder slice.
-# - props_dict: optional dict of operator properties, e.g. {'use_global': True}
-#   You can also pass an explicit icon filename as the third item either as a
-#   string ("apply.png") or as a props dict: ("Apply", "tmc.op", {"icon":"apply.png"})
+# Two ways to define pie contents:
+# 1) Position table (recommended): map positions to buttons for exact placement.
+#    Keys are cardinal strings: 'N','NE','E','SE','S','SW','W','NW'.
+#    Values are (label, operator_idname, icon_or_props) like below. Missing keys are skipped.
+# 2) Simple list: items are distributed clockwise starting at South (index 0).
+#
+# To make editing easy, set PIE_BUTTON_TABLE below. If it's None or empty, the list
+# builder `get_default_pie_items()` is used instead.
+
+# Canonical order used by this HUD: starting at South going counter-clockwise.
+PIE_POS_ORDER = ['S','SE','E','NE','N','NW','W','SW']
+
+# Example table — edit freely to set exact positions. Comment out entries to leave gaps (disabled slices).
+PIE_BUTTON_TABLE = {
+    # 'N' : ("Align Face", "tmc.set_normal_with_active_face", "normal_face.png"),
+    # 'NE': ("Clone", "tmc.clone_element", "clone.png"),
+    # 'E' : ("Boolean", "tmc.boolean", "boolean.png"),
+    # 'SE': ("Delete", "tmc.auto_delete", "delete.png"),
+    # 'S' : ("Toggle Mod", "tmc.toggle_modifier", "toggle.png"),
+    # 'SW': ("Apply Mod", "tmc.apply_modifier", "apply.png"),
+    # 'W' : ("ReBevel", "tmc.rebevel_smart", "rebevel.png"),
+    # 'NW': ("Clear VG", "tmc.clean_vertex_group", "vertex_group.png"),
+}
+
+def _items_from_table(table: dict):
+    items = []
+    if not isinstance(table, dict) or not table:
+        return items
+    for key in PIE_POS_ORDER:
+        val = table.get(key)
+        if not val:
+            continue
+        # normalize to 3-tuple
+        try:
+            if len(val) == 2:
+                items.append((val[0], val[1], {}))
+            else:
+                items.append((val[0], val[1], val[2]))
+        except Exception:
+            pass
+    return items
+
+# Simple, user-editable list fallback
 def get_default_pie_items():
     """Hardcoded fallback defaults for the HUD pie."""
     return [
@@ -161,6 +196,10 @@ def get_pie_items(context=None):
             return items
     except Exception:
         pass
+    # Prefer explicit position table if provided
+    table_items = _items_from_table(PIE_BUTTON_TABLE)
+    if table_items:
+        return table_items
     # Fallback defaults
     return get_default_pie_items()
 

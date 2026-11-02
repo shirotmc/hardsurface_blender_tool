@@ -4,6 +4,11 @@
 ICON_COLLECTIONS = {}
 PREVIEW_COLLECTIONS = {}
 
+# Cache of materials assigned to the current selection, shared by the material
+# UIList so it is computed once per selection change instead of once per row.
+# Invalidated by the depsgraph handler whenever the scene data changes.
+SELECTED_MATERIALS_CACHE = {"valid": False, "mats": set()}
+
 # TOGGLE
 TOGGLE_MODIFIER_BOOL = True
 TOGGLE_OPTIMAL_DISPLAY_BOOL = True

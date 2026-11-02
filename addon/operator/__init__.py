@@ -16,6 +16,7 @@ from .bridge import *
 from .screenshot import *
 from .mirror import *
 from .collection import *
+from .hidden_triangulation import *
 from .uv import *
 from .bakeset import *
 from .auto_delete import *
@@ -49,6 +50,7 @@ classes = [
 	## Collection
 	TMC_OP_CollapseAllCollections,
 	TMC_OP_ToggleCurrentHideGroup,
+	TMC_OP_ToggleHiddenTriangulation,
 	## Material
 	TMC_OP_DeleteDuplicateMaterials,
 	TMC_OP_CleanMaterialSlots,
@@ -132,8 +134,14 @@ classes = [
 ]
 
 def menu_func(self, context):
-	self.layout.menu("VIEW3D_MT_edit_mesh_looptools")
-	self.layout.separator()
+	# Only draw LoopTools menu if it's registered and available
+	try:
+		if hasattr(bpy.types, "VIEW3D_MT_edit_mesh_looptools"):
+			self.layout.menu("VIEW3D_MT_edit_mesh_looptools")
+			self.layout.separator()
+	except Exception:
+		# Silently ignore if menu isn't available
+		pass
 
 def register_operators():
 	from bpy.utils import register_class
@@ -141,9 +149,11 @@ def register_operators():
 		register_class(cls)
 	bpy.types.VIEW3D_MT_edit_mesh_context_menu.prepend(menu_func)
 	bpy.types.WindowManager.looptools = PointerProperty(type=LoopToolsProps)
+	sync_hidden_triangulation_overlay()
 	
 def unregister_operators():
 	from bpy.utils import unregister_class
+	unregister_hidden_triangulation_overlay()
 	for cls in reversed(classes):
 		unregister_class(cls)
 			
