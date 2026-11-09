@@ -1,5 +1,6 @@
 import bpy
 from ..ui.controller import *
+from ..operator.modeling import smooth_live_update
 from ..operator.hidden_triangulation import hidden_triangulation_display_update, hidden_triangulation_enabled_update
 
 
@@ -82,6 +83,54 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 
 	bpy.types.Scene.toggle_collection_area_ui = bpy.props.BoolProperty(
 		name="Enable Collection UI",
+		default=False
+	)
+
+	bpy.types.Scene.toggle_shape_key_area_ui = bpy.props.BoolProperty(
+		name="Enable Shape Key UI",
+		default=False
+	)
+
+	def _tmc_apply_shape_key_value(self, context):
+		scene = context.scene
+		idx = scene.shape_key_index
+		value = scene.shape_key_value
+		for obj in context.selected_objects:
+			if obj.type != 'MESH':
+				continue
+			key = obj.data.shape_keys
+			if key is None or idx >= len(key.key_blocks):
+				continue
+			key.key_blocks[idx].value = value
+		for area in context.screen.areas:
+			area.tag_redraw()
+
+	bpy.types.Scene.shape_key_index = bpy.props.IntProperty(
+		name="Shape Key Index",
+		description="Index of the shape key to adjust (0 = Basis)",
+		default=1,
+		min=0,
+		update=_tmc_apply_shape_key_value
+	)
+
+	bpy.types.Scene.shape_key_value = bpy.props.FloatProperty(
+		name="Shapekey Preview",
+		description="Value of the shape key at the chosen index, applied to all selected meshes",
+		default=0.0,
+		min=0.0,
+		max=1.0,
+		precision=2,
+		subtype='FACTOR',
+		update=_tmc_apply_shape_key_value
+	)
+
+	bpy.types.Scene.toggle_auto_highlight_area_ui = bpy.props.BoolProperty(
+		name="Enable Auto Highlight UI",
+		default=False
+	)
+
+	bpy.types.Scene.toggle_animation_area_ui = bpy.props.BoolProperty(
+		name="Enable Animation UI",
 		default=False
 	)
 
@@ -652,13 +701,29 @@ class TMC_UIProperty(bpy.types.PropertyGroup):
 	#endregion
 
 	#region smooth properties
+	# own influence sliders for Smooth Edge; moving them re-runs the operation live
+	bpy.types.Scene.smooth_curve_influence = bpy.props.FloatProperty(
+		name="Curve Influence", description="Strength of the Curve step (0 = skip)",
+		default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE',
+		update=smooth_live_update
+	)
+	bpy.types.Scene.smooth_space_influence = bpy.props.FloatProperty(
+		name="Space Influence", description="Strength of the Space step (0 = skip)",
+		default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE',
+		update=smooth_live_update
+	)
+	bpy.types.Scene.smooth_relax_influence = bpy.props.FloatProperty(
+		name="Relax Influence", description="Strength of the Relax step (0 = skip)",
+		default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE',
+		update=smooth_live_update
+	)
 	bpy.types.Scene.smooth_input = bpy.props.EnumProperty(
 		name="Input",
 		items=(("all", "Parallel (all)", "Also use non-selected "
 				"parallel loops as input"),
 			("selected", "Selection", "Only use selected vertices as input")),
 		description="Loops that are smoothed",
-		default='selected'
+		default='all'
 	)
 	#endregion
 

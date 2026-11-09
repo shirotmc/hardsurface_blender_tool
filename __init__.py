@@ -13,6 +13,9 @@ sys.dont_write_bytecode = True
 import bpy
 from . import addon_updater_ops
 from .addon.register import register_addon, unregister_addon
+from .addon.property.friendly_pivot import FriendlyPivotPrefs, draw_pivot_prefs
+from .addon.operator.simple_lattice.preferences import LatticePrefs, draw_lattice_prefs
+from .addon.operator.auto_highlight import HighlightPrefs, draw_highlight_prefs
 from bpy.app.handlers import persistent
 
 
@@ -259,6 +262,233 @@ class AddonPreferences(bpy.types.AddonPreferences):
 	pie_items = bpy.props.CollectionProperty(type=HS_PieItem)
 	pie_items_index = bpy.props.IntProperty(default=0)
 
+	# Integrated tools (their PropertyGroups are registered before this class)
+	pivot = bpy.props.PointerProperty(type=FriendlyPivotPrefs)
+	lattice = bpy.props.PointerProperty(type=LatticePrefs)
+	highlight = bpy.props.PointerProperty(type=HighlightPrefs)
+
+	def draw(self, context):
+		layout = self.layout
+		if self.mode == 'DIALOG':
+			col = layout.column(align=True)
+			col.prop(self, "label", text="Label")
+			col.prop(self, "operator", text="Operator idname")
+			col.prop(self, "icon_name", text="Icon file (icons/)")
+		else:
+			# Picker list from fallback defaults
+			try:
+				from .addon.ui.menu import get_default_pie_items
+			except Exception:
+				get_default_pie_items = lambda: []
+			items = get_default_pie_items()
+			col = layout.column(align=True)
+			col.label(text="Choose an item to add")
+			for idx, entry in enumerate(items):
+				label = entry[0] if len(entry) > 0 else ""
+				op = entry[1] if len(entry) > 1 else ""
+				icon = entry[2] if len(entry) > 2 else ""
+				row = col.row(align=True)
+				btn = row.operator(HS_OT_PieItemAddConfirm.bl_idname, text=label or op)
+				btn.label = label or op
+				btn.operator = op
+				btn.icon_name = icon if isinstance(icon, str) else (icon.get('icon','') if isinstance(icon, dict) else "")
+				# Set a flag so invoke() can auto-close the dialog on execute
+				self._added_from_picker = True
+
+	def execute(self, context):
+		prefs = context.preferences.addons[__package__].preferences
+		item = prefs.pie_items.add()
+		item.name = self.label or self.operator
+		item.op = self.operator
+		item.icon = self.icon_name
+		prefs.pie_items_index = len(prefs.pie_items) - 1
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		# Always open as picker by default for your workflow
+		self.mode = 'PICKER'
+		wm = context.window_manager
+		ret = wm.invoke_props_dialog(self, width=320)
+		# If an item was clicked, close immediately by returning FINISHED from execute; Blender will close dialog after operator finishes.
+		return ret
+
+
+@addon_updater_ops.make_annotations
+class HS_OT_PieItemAddConfirm(bpy.types.Operator):
+	bl_idname = "tmc.pie_item_add_confirm"
+	bl_label = "Add Item (Confirm)"
+	bl_description = "Confirm add from picker list"
+
+	label = bpy.props.StringProperty(default="")
+	operator = bpy.props.StringProperty(default="")
+	icon_name = bpy.props.StringProperty(default="")
+
+	def execute(self, context):
+		prefs = context.preferences.addons[__package__].preferences
+		item = prefs.pie_items.add()
+		item.name = self.label or self.operator
+		item.op = self.operator
+		item.icon = self.icon_name
+		prefs.pie_items_index = len(prefs.pie_items) - 1
+		return {'FINISHED'}
+
+
+class HS_OT_PieItemClear(bpy.types.Operator):
+	bl_idname = "tmc.pie_items_clear"
+	bl_label = "Clear Pie Items"
+	bl_description = "Remove all custom pie items"
+
+	def execute(self, context):
+		prefs = context.preferences.addons[__package__].preferences
+		prefs.pie_items.clear()
+		prefs.pie_items_index = 0
+		return {'FINISHED'}
+
+
+@addon_updater_ops.make_annotations
+class HS_OT_PieItemsSeedDefaults(bpy.types.Operator):
+	bl_idname = "tmc.pie_items_seed_defaults"
+	bl_label = "Load Defaults"
+	bl_description = "Fill the Pie Menu Items list with the add-on's default items"
+
+	def execute(self, context):
+		prefs = context.preferences.addons[__package__].preferences
+		# import lazily to avoid circulars
+		try:
+			from .addon.ui.menu import get_pie_items
+		except Exception:
+			return {'CANCELLED'}
+		# clear existing
+		prefs.pie_items.clear()
+		# add defaults
+		try:
+			defaults = get_pie_items(None)
+		except Exception:
+			defaults = []
+		for entry in defaults:
+			try:
+				label = entry[0] if len(entry) >= 1 else ""
+				op = entry[1] if len(entry) >= 2 else ""
+				icon = ""
+				if len(entry) >= 3:
+					p = entry[2]
+					if isinstance(p, str):
+						icon = p
+					elif isinstance(p, dict):
+						icon = p.get('icon', "")
+				item = prefs.pie_items.add()
+				item.name = label or op
+				item.op = op
+				item.icon = icon
+			except Exception:
+				continue
+		prefs.pie_items_index = max(0, len(prefs.pie_items) - 1)
+		return {'FINISHED'}
+
+@addon_updater_ops.make_annotations
+class HS_OT_PieItemAddSearch(bpy.types.Operator):
+	bl_idname = "tmc.pie_item_add_search"
+	bl_label = "Add Pie Item"
+	bl_description = "Search and add a default pie item"
+	bl_property = 'pick'
+
+	def _enum_items(self, context):
+		try:
+			from .addon.ui.menu import get_default_pie_items
+		except Exception:
+			return []
+		items = []
+		for idx, entry in enumerate(get_default_pie_items(), start=1):
+			label = entry[0] if len(entry) > 0 else ""
+			op = entry[1] if len(entry) > 1 else ""
+			identifier = op or label or f"item_{idx}"
+			name = label or op or identifier
+			items.append((identifier, name, "", idx))
+		return items
+
+	pick = bpy.props.EnumProperty(name='Choose Pie Item', description='', options={'SKIP_SAVE'}, items=_enum_items)
+
+	def execute(self, context):
+		chosen = getattr(self, 'pick', None)
+		if not chosen or chosen == 'SELECT/SEARCH ITEM':
+			return {'CANCELLED'}
+		try:
+			from .addon.ui.menu import get_default_pie_items
+		except Exception:
+			return {'CANCELLED'}
+		match = None
+		for entry in get_default_pie_items():
+			label = entry[0] if len(entry) > 0 else ""
+			op = entry[1] if len(entry) > 1 else ""
+			if op == chosen or label == chosen:
+				match = entry
+				break
+		if not match:
+			return {'CANCELLED'}
+		label = match[0] if len(match) > 0 else chosen
+		op = match[1] if len(match) > 1 else chosen
+		icon_name = ""
+		if len(match) > 2:
+			third = match[2]
+			if isinstance(third, str):
+				icon_name = third
+			elif isinstance(third, dict):
+				icon_name = third.get('icon', '')
+		prefs = context.preferences.addons[__package__].preferences
+		item = prefs.pie_items.add()
+		item.name = label or op
+		item.op = op
+		item.icon = icon_name
+		prefs.pie_items_index = len(prefs.pie_items) - 1
+		return {'FINISHED'}
+
+	def invoke(self, context, event):
+		context.window_manager.invoke_search_popup(self)
+		return self.execute(context)
+
+@addon_updater_ops.make_annotations
+class HS_OT_PieItemRemove(bpy.types.Operator):
+	bl_idname = "tmc.pie_item_remove"
+	bl_label = "Remove Pie Item"
+	index = bpy.props.IntProperty(default=-1)
+
+	def execute(self, context):
+		prefs = context.preferences.addons[__package__].preferences
+		idx = self.index if self.index >= 0 else prefs.pie_items_index
+		if 0 <= idx < len(prefs.pie_items):
+			prefs.pie_items.remove(idx)
+			prefs.pie_items_index = min(idx, len(prefs.pie_items)-1)
+		return {'FINISHED'}
+
+
+@addon_updater_ops.make_annotations
+class AddonPreferences(bpy.types.AddonPreferences):
+	bl_idname = __package__
+
+	# Updater options
+	auto_check_update = bpy.props.BoolProperty(name="Auto-check for Update", default=False)
+	updater_interval_months = bpy.props.IntProperty(name='Months', default=0, min=0)
+	updater_interval_days = bpy.props.IntProperty(name='Days', default=7, min=0, max=31)
+	updater_interval_hours = bpy.props.IntProperty(name='Hours', default=0, min=0, max=23)
+	updater_interval_minutes = bpy.props.IntProperty(name='Minutes', default=0, min=0, max=59)
+
+	# Pie menu configuration
+	pie_items = bpy.props.CollectionProperty(type=HS_PieItem)
+	pie_items_index = bpy.props.IntProperty(default=0)
+
+	# Integrated tools (their PropertyGroups are registered before this class)
+	pivot = bpy.props.PointerProperty(type=FriendlyPivotPrefs)
+	lattice = bpy.props.PointerProperty(type=LatticePrefs)
+	highlight = bpy.props.PointerProperty(type=HighlightPrefs)
+	# Which integrated-tool section is expanded in the preferences UI
+	prefs_section = bpy.props.EnumProperty(
+		name="Tool Settings",
+		items=(("NONE", "None", ""),
+			   ("PIVOT", "Friendly Pivot", "Friendly Pivot (SCPO) settings"),
+			   ("LATTICE", "Simple Lattice", "Simple Lattice default settings"),
+			   ("HIGHLIGHT", "Auto Highlight", "Auto Highlight in Outliner settings")),
+		default="NONE")
+
 	def draw(self, context):
 		layout = self.layout
 		# Updater block
@@ -291,6 +521,17 @@ class AddonPreferences(bpy.types.AddonPreferences):
 			except Exception:
 				pass
 
+		# Integrated tools: only settings that change how each tool behaves
+		for title, drawer in (("Friendly Pivot", lambda b: draw_pivot_prefs(b, self.pivot)),
+							  ("Simple Lattice", lambda b: draw_lattice_prefs(b, self.lattice)),
+							  ("Auto Highlight", lambda b: draw_highlight_prefs(b, self.highlight, context))):
+			box = layout.box()
+			box.label(text=title)
+			drawer(box)
+
+
+_PREFS_GROUPS = (FriendlyPivotPrefs, LatticePrefs, HighlightPrefs)
+
 
 def register():
 	# Update add-ons
@@ -302,6 +543,9 @@ def register():
 	bpy.utils.register_class(HS_OT_PieItemClear)
 	bpy.utils.register_class(HS_OT_PieItemsSeedDefaults)
 	bpy.utils.register_class(HS_OT_PieItemRemove)
+	# PropertyGroups used by AddonPreferences must be registered first
+	for cls in _PREFS_GROUPS:
+		bpy.utils.register_class(cls)
 	bpy.utils.register_class(AddonPreferences)
 	# Ensure our load handler is attached so runtime handlers re-register
 	try:
@@ -316,6 +560,8 @@ def unregister():
 	# Update add-ons
 	addon_updater_ops.unregister()
 	bpy.utils.unregister_class(AddonPreferences)
+	for cls in reversed(_PREFS_GROUPS):
+		bpy.utils.unregister_class(cls)
 	bpy.utils.unregister_class(HS_OT_PieItemRemove)
 	bpy.utils.unregister_class(HS_OT_PieItemClear)
 	bpy.utils.unregister_class(HS_OT_PieItemsSeedDefaults)

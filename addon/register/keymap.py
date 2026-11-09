@@ -27,6 +27,15 @@ def register_keymaps():
     kmi_rebevel_mesh = km_mesh.keymap_items.new('tmc.re_bevel', 'B', 'PRESS', alt=True)
     addon_keymaps.append((km_mesh, kmi_rebevel_mesh))
 
+    # Friendly Pivot (SCPO): D = pivot/orientation, double-click D = origin, Image editor D = 2D pivot
+    kmi_fp = km.keymap_items.new('friendly.pivot', 'D', 'PRESS', ctrl=False, shift=False)
+    addon_keymaps.append((km, kmi_fp))
+    kmi_fo = km.keymap_items.new('friendly.origin', 'D', 'DOUBLE_CLICK', ctrl=False, shift=False)
+    addon_keymaps.append((km, kmi_fo))
+    km_img = kc.keymaps.new(name='Image', space_type='IMAGE_EDITOR')
+    kmi_f2d = km_img.keymap_items.new('friendly.pivot2d', 'D', 'PRESS', ctrl=False, shift=False)
+    addon_keymaps.append((km_img, kmi_f2d))
+
     # Curve keymaps
     km_curve = kc.keymaps.new(name='Curve', space_type='EMPTY', region_type='WINDOW')
 

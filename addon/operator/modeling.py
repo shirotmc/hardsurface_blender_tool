@@ -327,59 +327,286 @@ class TMC_OP_CurveEdge(bpy.types.Operator):
 #endregion
 
 #region smooth edge
+# Smooth Edge = Curve -> Space -> Relax, applied one after another on the same selection.
+# Every stage has its own influence (0 = stage skipped) and is calculated from the result of
+# the previous stage, so the three tools really are combined instead of only running Curve.
+
+def _smooth_lock(scene, prefix):
+	lock = [getattr(scene, prefix + "_lock_x", False),
+			getattr(scene, prefix + "_lock_y", False),
+			getattr(scene, prefix + "_lock_z", False)]
+	return lock if any(lock) else False
+
+def _smooth_refresh(object, bm, derived, bm_mod, not_use_mirror):
+	"""Re-read the (mirror-)derived mesh after vertices were moved, so the next stage sees the new positions."""
+	if not derived:
+		bm.verts.ensure_lookup_table()
+		bm.edges.ensure_lookup_table()
+		bm.faces.ensure_lookup_table()
+		return derived, bm
+	bm_mod.free()
+	terminate()
+	bpy.context.view_layer.update()
+	return get_derived_bmesh(object, bm, not_use_mirror)
+
+def _smooth_stage_curve(scene, object, bm):
+	derived, bm_mod, loops = curve_get_input(object, bm, scene.curve_boundaries)
+	mapping = get_mapping(derived, bm, bm_mod, False, True, loops)
+	loops = check_loops(loops, mapping, bm_mod)
+	verts_selected = [v.index for v in bm_mod.verts if v.select and not v.hide]
+
+	move = []
+	failed = 0
+	for loop in loops:
+		# a loop that hits a LoopTools edge case must not cancel the other loops
+		try:
+			knots, points = curve_calculate_knots(loop, verts_selected)
+			pknots = curve_project_knots(bm_mod, verts_selected, knots, points, loop[1])
+			tknots, tpoints = curve_calculate_t(bm_mod, knots, points, pknots, scene.curve_regular, loop[1])
+			splines = calculate_splines(scene.curve_interpolation, bm_mod, tknots, knots)
+			if not splines:
+				failed += 1
+				continue
+			move.append(curve_calculate_vertices(bm_mod, knots, tknots, points, tpoints, splines,
+				scene.curve_interpolation, scene.curve_restriction))
+		except Exception:
+			failed += 1
+
+	move_verts(object, bm, mapping, move, _smooth_lock(scene, "curve"), scene.curve_influence)
+	if derived:
+		bm_mod.free()
+	return len(loops), failed
+
+def _smooth_stage_space(scene, object, bm):
+	derived, bm_mod, loops = get_connected_input(object, bm, True, scene.smooth_input)
+	mapping = get_mapping(derived, bm, bm_mod, False, False, loops)
+	loops = check_loops(loops, mapping, bm_mod)
+
+	move = []
+	for loop in loops:
+		knots = loop[0][:]  # never modify the loop in place
+		if loop[1]:  # circular
+			knots.append(knots[0])
+		tknots, tpoints = space_calculate_t(bm_mod, knots[:])
+		splines = calculate_splines(scene.curve_interpolation, bm_mod, tknots, knots[:])
+		move.append(space_calculate_verts(bm_mod, scene.curve_interpolation, tknots, tpoints, knots[:-1], splines))
+
+	move_verts(object, bm, mapping, move, _smooth_lock(scene, "space"), scene.space_influence)
+	if derived:
+		bm_mod.free()
+
+def _smooth_stage_relax(scene, object, bm):
+	derived, bm_mod, loops = get_connected_input(object, bm, False, scene.smooth_input)
+	mapping = get_mapping(derived, bm, bm_mod, False, False, loops)
+	loops = check_loops(loops, mapping, bm_mod)
+	knots, points = relax_calculate_knots(loops)
+
+	for iteration in range(int(scene.relax_iterations)):
+		if iteration > 0:
+			derived, bm_mod = _smooth_refresh(object, bm, derived, bm_mod, False)
+		tknots, tpoints = relax_calculate_t(bm_mod, knots, points, scene.relax_regular)
+		splines = []
+		for i in range(len(knots)):
+			splines.append(calculate_splines(scene.curve_interpolation, bm_mod, tknots[i], knots[i]))
+		move = [relax_calculate_verts(bm_mod, scene.curve_interpolation, tknots, knots, tpoints, points, splines)]
+		move_verts(object, bm, mapping, move, False, scene.relax_influence)
+
+	if derived:
+		bm_mod.free()
+
+# operator property -> Scene property. The three influences have their own Scene sliders so they do
+# not clash with the standalone Curve/Space/Relax tools that share the old `*_influence` props.
+_SMOOTH_SCENE_PROPS = {
+	"curve_influence": "smooth_curve_influence",
+	"space_influence": "smooth_space_influence",
+	"relax_influence": "smooth_relax_influence",
+	"smooth_input": "smooth_input",
+	"curve_interpolation": "curve_interpolation",
+	"curve_boundaries": "curve_boundaries",
+	"curve_regular": "curve_regular",
+	"curve_restriction": "curve_restriction",
+	"relax_iterations": "relax_iterations",
+	"relax_regular": "relax_regular",
+}
+
+# Live session: lets the sliders in the main panel re-run Smooth Edge from the mesh as it was
+# before the button was pressed. Dropped as soon as the mesh no longer matches what we produced.
+_smooth_session = {}
+_smooth_guard = False
+
+def _smooth_coords(obj):
+	bm = bmesh.from_edit_mesh(obj.data)
+	return [v.co.copy() for v in bm.verts], [v.select for v in bm.verts]
+
+def _smooth_same(a, b):
+	return len(a) == len(b) and all((x - y).length_squared < 1e-12 for x, y in zip(a, b))
+
+def _smooth_live_start(obj):
+	coords, sel = _smooth_coords(obj)
+	_smooth_session.clear()
+	_smooth_session.update(obj=obj.name, pre=coords, sel=sel, post=None)
+
+def _smooth_live_store_post(obj):
+	if _smooth_session.get("obj") == obj.name:
+		_smooth_session["post"], _ = _smooth_coords(obj)
+
+def smooth_live_update(scene, context):
+	"""Update callback of the Smooth Edge sliders in the main panel: redo the operation live."""
+	global _smooth_guard
+	if _smooth_guard or not _smooth_session:
+		return
+	obj = context.active_object
+	if (obj is None or obj.type != 'MESH' or obj.mode != 'EDIT'
+			or obj.name != _smooth_session["obj"]):
+		return
+	coords, sel = _smooth_coords(obj)
+	post = _smooth_session["post"]
+	# the mesh was edited (or selection changed) after the last Smooth Edge: forget the session
+	if post is None or not _smooth_same(coords, post) or sel != _smooth_session["sel"]:
+		_smooth_session.clear()
+		return
+	_smooth_guard = True
+	try:
+		bm = bmesh.from_edit_mesh(obj.data)
+		bm.verts.ensure_lookup_table()
+		for v, co in zip(bm.verts, _smooth_session["pre"]):
+			v.co = co
+		bmesh.update_edit_mesh(obj.data)
+		bpy.ops.tmc.smooth_edge('EXEC_DEFAULT', **{
+			op_name: getattr(scene, scene_name) for op_name, scene_name in _SMOOTH_SCENE_PROPS.items()})
+	finally:
+		_smooth_guard = False
+
+class _SmoothCfg:
+	"""Settings snapshot handed to the stage functions (operator props + scene lock toggles)."""
+	def __init__(self, op, scene):
+		for name in _SMOOTH_SCENE_PROPS:
+			setattr(self, name, getattr(op, name))
+		for prefix in ("curve", "space"):
+			for axis in "xyz":
+				key = "%s_lock_%s" % (prefix, axis)
+				setattr(self, key, getattr(scene, key, False))
+
 class TMC_OP_SmoothEdge(bpy.types.Operator):
 	bl_idname = "tmc.smooth_edge"
-	bl_label = "smooth edge"
-	bl_description = 'make selected edges become so smooth'
+	bl_label = "Smooth Edge"
+	bl_description = 'make selected edges become so smooth (Curve + Space + Relax)'
+	bl_options = {'REGISTER', 'UNDO'}
+
+	curve_influence: bpy.props.FloatProperty(name="Curve Influence", default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE', description="Strength of the Curve step (0 = skip)")
+	space_influence: bpy.props.FloatProperty(name="Space Influence", default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE', description="Strength of the Space step (0 = skip)")
+	relax_influence: bpy.props.FloatProperty(name="Relax Influence", default=100.0, min=0.0, max=100.0, precision=2, subtype='PERCENTAGE', description="Strength of the Relax step (0 = skip)")
+	smooth_input: bpy.props.EnumProperty(name="Loop Input",
+		items=(("all", "Parallel (all)", "Also use non-selected parallel loops as input"),
+			   ("selected", "Selection", "Only use selected vertices as input")),
+		default='all')
+	curve_interpolation: bpy.props.EnumProperty(name="Interpolation",
+		items=(("cubic", "Cubic", "Natural cubic spline, smooth results"),
+			   ("linear", "Linear", "Simple and fast linear algorithm")),
+		default='cubic')
+	curve_boundaries: bpy.props.BoolProperty(name="Boundaries", default=False, description="Limit the tool to work within the boundaries of the selected vertices")
+	curve_regular: bpy.props.BoolProperty(name="Regular distribution", default=True, description="Distribute vertices at constant distances along the curve")
+	curve_restriction: bpy.props.EnumProperty(name="Restriction",
+		items=(("none", "None", "No restrictions on vertex movement"),
+			   ("extrude", "Extrude only", "Only allow extrusions (no indentations)"),
+			   ("indent", "Indent only", "Only allow indentation (no extrusions)")),
+		default='none')
+	relax_iterations: bpy.props.EnumProperty(name="Iterations",
+		items=(("1", "1", "One"), ("3", "3", "Three"), ("5", "5", "Five"),
+			   ("10", "10", "Ten"), ("25", "25", "Twenty-five")),
+		default="1")
+	relax_regular: bpy.props.BoolProperty(name="Regular distribution", default=True, description="Distribute vertices at constant distances along the loop")
+
+	@classmethod
+	def poll(cls, context):
+		obj = context.active_object
+		return obj is not None and obj.type == 'MESH' and obj.mode == 'EDIT'
+
+	def invoke(self, context, event):
+		# start from the values shown in the Smooth Edge panel
+		scene = context.scene
+		for op_name, scene_name in _SMOOTH_SCENE_PROPS.items():
+			setattr(self, op_name, getattr(scene, scene_name))
+		_smooth_live_start(context.active_object)
+		return self.execute(context)
+
+	def draw(self, context):
+		layout = self.layout
+		layout.prop(self, "curve_influence")
+		layout.prop(self, "space_influence")
+		layout.prop(self, "relax_influence")
+		split = layout.split(factor=0.4, align=True)
+		split.label(text="Loop Input:")
+		split.prop(self, "smooth_input", text="")
+
+		box = layout.box()
+		box.label(text="Curve Settings")
+		split = box.split(factor=0.4, align=True)
+		split.label(text="Interpolation:")
+		split.prop(self, "curve_interpolation", text="")
+		box.prop(self, "curve_boundaries")
+		box.prop(self, "curve_regular")
+		split = box.split(factor=0.4, align=True)
+		split.label(text="Restriction:")
+		split.prop(self, "curve_restriction", text="")
+
+		box = layout.box()
+		box.label(text="Relax Settings")
+		split = box.split(factor=0.4, align=True)
+		split.label(text="Iterations:")
+		split.prop(self, "relax_iterations", text="")
+		box.prop(self, "relax_regular")
 
 	def execute(self, context):
-		# initialise
+		scene = context.scene
+		cfg = _SmoothCfg(self, scene)
+		# keep the panel in sync with the last used values
+		global _smooth_guard
+		outer_guard = _smooth_guard
+		_smooth_guard = True  # writing the sliders back must not trigger the live update
+		try:
+			for op_name, scene_name in _SMOOTH_SCENE_PROPS.items():
+				try:
+					setattr(scene, scene_name, getattr(self, op_name))
+				except Exception:
+					pass
+		finally:
+			_smooth_guard = outer_guard
+
 		object, bm = initialise()
-		# check cache to see if we can save time
-		curve_cached, single_loops, loops, derived, mapping = cache_read("Curve",
-			object, bm, False, context.scene.curve_boundaries)
-		if curve_cached:
-			derived, bm_mod = get_derived_bmesh(object, bm, False)
-		else:
-			# find loops
-			derived, bm_mod, loops = curve_get_input(object, bm, context.scene.curve_boundaries)
-			mapping = get_mapping(derived, bm, bm_mod, False, True, loops)
-			loops = check_loops(loops, mapping, bm_mod)
-		verts_selected = [
-			v.index for v in bm_mod.verts if v.select and not v.hide
-			]
 
-		# saving cache for faster execution next time
-		if not curve_cached:
-			cache_write("Curve", object, bm, False, context.scene.curve_boundaries, False,
-				loops, derived, mapping)
+		stages = (
+			("Curve", cfg.curve_influence, _smooth_stage_curve),
+			("Space", cfg.space_influence, _smooth_stage_space),
+			("Relax", cfg.relax_influence, _smooth_stage_relax),
+		)
+		ran = 0
+		for name, influence, stage in stages:
+			if influence == 0:
+				continue
+			if ran:
+				# previous stage changed the mesh: make sure selection/derived data is up to date
+				bm = bmesh.from_edit_mesh(object.data)
+				bm.verts.ensure_lookup_table()
+				bm.edges.ensure_lookup_table()
+				bm.faces.ensure_lookup_table()
+				if 'MIRROR' in [m.type for m in object.modifiers if m.show_viewport]:
+					terminate()
+					context.view_layer.update()
+			try:
+				info = stage(cfg, object, bm)
+				if name == "Curve" and info:
+					total, failed = info
+					if total == 0:
+						self.report({'INFO'}, "Smooth Edge - Curve found no valid loop in the selection")
+					elif failed:
+						self.report({'WARNING'}, "Smooth Edge - Curve skipped %d of %d loops it could not solve" % (failed, total))
+			except Exception as e:
+				self.report({'WARNING'}, "Smooth Edge - %s step skipped: %s" % (name, e))
+			ran += 1
 
-		# Curve Movement
-		move = []
-		for loop in loops:
-			knots, points = curve_calculate_knots(loop, verts_selected)
-			pknots = curve_project_knots(bm_mod, verts_selected, knots,
-				points, loop[1])
-			tknots, tpoints = curve_calculate_t(bm_mod, knots, points,
-				pknots, context.scene.curve_regular, loop[1])
-			splines = calculate_splines(context.scene.curve_interpolation, bm_mod,
-				tknots, knots)
-			move.append(curve_calculate_vertices(bm_mod, knots, tknots,
-				points, tpoints, splines, context.scene.curve_interpolation,
-				context.scene.curve_restriction))
-
-		# move vertices to new locations
-		if context.scene.curve_lock_x or context.scene.curve_lock_y or context.scene.curve_lock_z:
-			lock = [context.scene.curve_lock_x, context.scene.curve_lock_y, context.scene.curve_lock_z]
-		else:
-			lock = False
-		move_verts(object, bm, mapping, move, lock, context.scene.curve_influence)
-
-		# cleaning up
-		if derived:
-			bm_mod.free()
 		terminate()
-
+		_smooth_live_store_post(object)
 		return {'FINISHED'}
 #endregion
 

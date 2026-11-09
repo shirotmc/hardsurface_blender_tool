@@ -369,11 +369,11 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 			if scene.toggle_smooth_edge_ui:
 				child_box = layout.box()
 				row = child_box.row()
-				row.prop(scene, "curve_influence", text="Curve")
+				row.prop(scene, "smooth_curve_influence", text="Curve")
 				row = child_box.row()
-				row.prop(scene, "space_influence", text="Space")
+				row.prop(scene, "smooth_space_influence", text="Space")
 				row = child_box.row()
-				row.prop(scene, "relax_influence",  text="Relax")
+				row.prop(scene, "smooth_relax_influence",  text="Relax")
 				row = child_box.row()
 				split = row.split(factor=0.4, align=True)
 				split.label(text="Loop Input:")
@@ -458,6 +458,53 @@ class TMC_MT_Main_Panel(bpy.types.Panel):
 				row = child_box.row(align=True)
 				row.operator("tmc.clear_custom_normals_data", text = "Clear Custom Normals Data")
 				row.scale_y = 1.5
+
+			## Shape Key
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_shape_key_area_ui:
+				split.prop(scene, "toggle_shape_key_area_ui", text="", icon="DOWNARROW_HLT")
+			else:
+				split.prop(scene, "toggle_shape_key_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Shape Key")
+			if scene.toggle_shape_key_area_ui:
+				child_box = main_box.box()
+				column = child_box.column(align=True)
+				column.prop(scene, "shape_key_index", text="Shape Key Index")
+				column.prop(scene, "shape_key_value", text="Shapekey Preview", slider=True)
+
+			## Animation
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_animation_area_ui:
+				split.prop(scene, "toggle_animation_area_ui", text="", icon="DOWNARROW_HLT")
+			else:
+				split.prop(scene, "toggle_animation_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Animation")
+			if scene.toggle_animation_area_ui:
+				child_box = main_box.box()
+				row = child_box.row(align=True)
+				row.operator("tmc.clear_drivers", text="Clear Drivers")
+				row.scale_y = 1.5
+
+			## Auto Highlight in Outliner
+			main_box = layout.box()
+			row = main_box.row()
+			split = row.split(factor=0.15, align=True)
+			if context.scene.toggle_auto_highlight_area_ui:
+				split.prop(scene, "toggle_auto_highlight_area_ui", text="", icon="DOWNARROW_HLT")
+			else:
+				split.prop(scene, "toggle_auto_highlight_area_ui", text="", icon="RIGHTARROW")
+			split.label(text="Auto Highlight")
+			if scene.toggle_auto_highlight_area_ui:
+				child_box = main_box.box()
+				col = child_box.column()
+				col.prop(scene, "auto_highlight_in_outliner")
+				if scene.auto_highlight_in_outliner:
+					col.prop(scene, "collapse_other_collections")
+					col.prop(scene, "collapse_on_deselect")
 
 			## Hidden Triangulation
 			main_box = layout.box()

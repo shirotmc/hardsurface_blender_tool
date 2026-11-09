@@ -11,6 +11,7 @@ from .modeling import *
 from .looptools import  LoopToolsProps, Circle, Curve, Flatten, Relax, Space
 from .normal import *
 from .vertex_group import *
+from .animation import *
 from .geometry_data import *
 from .bridge import *
 from .screenshot import *
@@ -21,6 +22,9 @@ from .uv import *
 from .bakeset import *
 from .auto_delete import *
 from .edge_constraint import *
+from .friendly_pivot import register_friendly_pivot, unregister_friendly_pivot
+from .simple_lattice import register_simple_lattice, unregister_simple_lattice
+from .auto_highlight import register_auto_highlight, unregister_auto_highlight
 from .rebevel import TMC_OP_Unbevel, TMC_OP_BevelCurve, TMC_OP_reBevelCurve, TMC_OT_RebevelSmart
 
 
@@ -123,6 +127,7 @@ classes = [
 
 	### Vertex Group
 	TMC_OP_CleanVertexGroup,
+	TMC_OP_ClearDrivers,
 	### Vertex Normal
 	TMC_OP_Set_Normal_With_Active_Face,
 
@@ -150,9 +155,22 @@ def register_operators():
 	bpy.types.VIEW3D_MT_edit_mesh_context_menu.prepend(menu_func)
 	bpy.types.WindowManager.looptools = PointerProperty(type=LoopToolsProps)
 	sync_hidden_triangulation_overlay()
+	# Integrated tools (each is isolated so a failure can't break the rest of the add-on)
+	for reg in (register_friendly_pivot, register_simple_lattice, register_auto_highlight):
+		try:
+			reg()
+		except Exception as e:
+			import traceback
+			print("HS Tool: failed to register", reg.__name__, e)
+			traceback.print_exc()
 	
 def unregister_operators():
 	from bpy.utils import unregister_class
+	for unreg in (unregister_auto_highlight, unregister_simple_lattice, unregister_friendly_pivot):
+		try:
+			unreg()
+		except Exception as e:
+			print("HS Tool: failed to unregister", unreg.__name__, e)
 	unregister_hidden_triangulation_overlay()
 	for cls in reversed(classes):
 		unregister_class(cls)
